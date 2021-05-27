@@ -1,7 +1,11 @@
 #ifndef MERLIN_GRAPH
 #define MERLIN_GRAPH
 
-#define dllexport __declspec( dllexport )
+#ifdef _WIN32
+  #define dllexport __declspec( dllexport )
+#else
+  #define dllexport __attribute__((visibility(default)))
+#endif
 
 #include <vulkan/vulkan.h>
 #include "../libs/SDL2/include/SDL.h"

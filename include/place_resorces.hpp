@@ -5,7 +5,11 @@
 #include "place_building.hpp"
 #include "place_people.hpp"
 
-#define dllexport __declspec( dllexport )
+#ifdef _WIN32
+  #define dllexport __declspec( dllexport )
+#else
+  #define dllexport __attribute__((visibility(default)))
+#endif
 
 namespace place {
   

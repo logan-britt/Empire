@@ -8,7 +8,11 @@
 #include <string>
 #include <vector>
 
-#define dllexport __declspec( dllexport )
+#ifdef _WIN32
+  #define dllexport __declspec( dllexport )
+#else
+  #define dllexport __attribute__((visibility(default)))
+#endif
 
 namespace place {
   struct dllexport Person
