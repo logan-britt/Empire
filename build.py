@@ -3,6 +3,13 @@ import sys
 import shutil
 from subprocess import run
 
+linux_exts = {'shared':'.so'}
+window_exts = {'shared':'.dll'}
+if 'win' in sys.platform:
+  exensions = window_exts
+else:
+  exensions = linux_exts
+
 def process_args(raw_args):
   processed_args = {}
   for i in range(len(raw_args)):
@@ -66,7 +73,7 @@ def build(debug):
     '--shared',
     
     '-o',
-    'Empire/libMerlin.dll'
+    f'Empire/libMerlin{exensions["shared"]}'
   ])
   
   run([
@@ -80,7 +87,7 @@ def build(debug):
     '--shared',
 
     '-o',
-    'Empire/libPlace.dll'
+    f'Empire/libPlace{exensions["shared"]}'
   ])
 
   run([
