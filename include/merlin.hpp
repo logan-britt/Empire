@@ -3,8 +3,8 @@
 
 #ifdef _WIN32
   #define dllexport __declspec( dllexport )
-#else
-  #define dllexport __attribute__((visibility(default)))
+#else 
+  #define dllexport
 #endif
 
 #include <vulkan/vulkan.h>
@@ -16,11 +16,12 @@
 enum gpu_type{DISCRETE, INTEGRATED};
 
 namespace merlin {
-  void dllexport init();
-  void dllexport terminate();
-
   struct Engine;
   struct Window;
+
+
+  void dllexport init();
+  void dllexport terminate();
 
   struct dllexport Engine_Init
   {
@@ -40,7 +41,6 @@ namespace merlin {
     VkQueue present_queue;
     VkQueue graphics_queue;
     VkQueue transfer_queue;
-
     std::vector<Window*> linked_windows;
   };
 
@@ -69,8 +69,8 @@ namespace merlin {
 
     uint32_t image_count;
     VkExtent2D extent_2d;
-    std::vector<VkImage> images;
 
+    std::vector<VkImage> images;
     Engine* linked_engine;
   };
   

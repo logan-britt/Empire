@@ -4,7 +4,7 @@
 #ifdef _WIN32
   #define dllexport __declspec( dllexport )
 #else
-  #define dllexport __attribute__((visibility(default)))
+  #define dllexport
 #endif
 
 #include <vulkan/vulkan.h>
@@ -46,6 +46,7 @@ namespace merlin {
     VkRenderPass render_pass;
   };
 
+
   struct dllexport Graph_Init
   {
     bool activated = false;
@@ -53,6 +54,7 @@ namespace merlin {
     std::vector<State_Init> loaded;
     std::vector<State_Init> unloaded;
   };
+
   struct dllexport Graph
   {
     State* active_state;

@@ -8,7 +8,7 @@
 #ifdef _WIN32
   #define dllexport __declspec( dllexport )
 #else
-  #define dllexport __attribute__((visibility(default)))
+  #define dllexport
 #endif
 
 namespace place {

@@ -23,23 +23,6 @@ int main() {
   merlin::Engine g_engine; merlin::Window window;
   merlin::jump_engine(w_init, &window, e_init, &g_engine);
 
-  merlin::Shader test_shader = {};
-  test_shader.name = "main";
-  test_shader.vertex_path = "shaders/triangle_vert.spv";
-  test_shader.fragment_path = "shaders/triangle_frag.spv";
-  test_shader.geometry = false;
-
-  merlin::State_Init test_state = {};
-  test_state.id = 0;
-  test_state.shader = test_shader;
-
-  merlin::Graph_Init test_graph_init = {};
-  test_graph_init.active = test_state;
-  test_graph_init.loaded = {};
-  test_graph_init.unloaded = {};
-
-  merlin::Graph test_graph = merlin::create_graph(test_graph_init);
-
   /* --- the main simulation loop --- */
   do
   {
