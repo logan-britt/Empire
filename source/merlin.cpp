@@ -6,73 +6,11 @@
 #include <iostream>
 #include "../libs/SDL2/include/SDL_vulkan.h"
 
-bool global_devices_inited = false;
-std::vector<VkPhysicalDevice> global_devices = {};
-
-uint32_t find_max_index(std::vector<int>* values) {
-  int max_value = 0;
-  int max_index = 0;
-  int index = 0;
-  std::vector<int>::iterator max_it;
-  for(std::vector<int>::iterator it=values->begin(); it<values->end(); it++) {
-    if(*it > max_value) {
-      max_value = *it;
-      max_index = index;
-      max_it = it;
-    }
-    index += 1;
-  }
-  values->erase(max_it);
-  return max_index;
-}
-
-VkPhysicalDevice borrow_device(gpu_type type) {
-  int key_index = 0;
-  bool device_found = false;
-  for(uint32_t i=0; i<global_devices.size(); i++) {
-    VkPhysicalDeviceProperties props;
-    vkGetPhysicalDeviceProperties(global_devices[i], &props);
-
-    switch(type)
-    {
-      case DISCRETE:
-        if(props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-          key_index = i;
-        }
-        break;
-      case INTEGRATED:
-        if(props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
-          key_index = i;
-        }
-        break;
-    }
-  }
-
-  int search_index = 0;
-  VkPhysicalDevice search_result;
-  std::vector<VkPhysicalDevice>::iterator search_iterator;
-  for(std::vector<VkPhysicalDevice>::iterator it=global_devices.begin(); it<global_devices.end(); it++) {
-    if(key_index == search_index) {
-      search_result = *it;
-      search_iterator = it;
-      break;
-    }
-    search_index += 1;
-  }
-
-  global_devices.erase(search_iterator);
-  return search_result;
-}
-
-void return_device(VkPhysicalDevice physical_device) {
-  global_devices.push_back(physical_device);
-}
-
 namespace merlin {
   void init() {
     if(SDL_Init( SDL_INIT_EVERYTHING ) != 0) {
       std::cerr << "Failed to init SDL: " << SDL_GetError() << "\n";
-      throw -1;
+      throw;
     }
   }
   void terminate() {
@@ -93,19 +31,34 @@ namespace merlin {
     engine->instance = help::create_instance(window->ptr, e_init.debug);
 
     if(!SDL_Vulkan_CreateSurface(window->ptr, engine->instance, &window->surface)) {
-      std::cout << "Surface Creation Faild." << std::endl;
+      std::cerr << "Surface Creation Faild." << std::endl;
+      throw;
     }
 
-    if(!global_devices_inited) {
-      global_devices_inited = true;
+    uint32_t physical_device_count;
+    bool physical_device_found = false;
+    vkEnumeratePhysicalDevices(engine->instance, &physical_device_count, nullptr);
+    std::vector<VkPhysicalDevice> physical_devices(physical_device_count);
+    vkEnumeratePhysicalDevices(engine->instance, &physical_device_count, physical_devices.data());
+    for(uint32_t i=0; i<physical_device_count; i++) {
+      VkPhysicalDeviceProperties device_props;
+      vkGetPhysicalDeviceProperties(physical_devices[i], &device_props);
 
-      uint32_t physical_device_count;
-      vkEnumeratePhysicalDevices(engine->instance, &physical_device_count, nullptr);
-      global_devices.resize(physical_device_count);
-      vkEnumeratePhysicalDevices(engine->instance, &physical_device_count, global_devices.data());
+      if(e_init.type == DISCRETE && device_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+        engine->physical_device = physical_devices[i];
+        physical_device_found = true;
+        break;
+      }
+      else if(e_init.type == INTEGRATED && device_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
+        engine->physical_device = physical_devices[i];
+        physical_device_found = true;
+        break;
+      }
+    }
+    if(!physical_device_found) {
+      engine->physical_device = physical_devices[0];
     }
 
-    engine->physical_device = borrow_device(DISCRETE);
     help::find_indecies(&engine->present_index, &engine->graphics_index, &engine->transfer_index, window->surface, engine->physical_device);
 
     std::vector<VkDeviceQueueCreateInfo> queue_infos = help::create_queue_infos(engine->present_index, engine->graphics_index, engine->transfer_index);
@@ -114,7 +67,7 @@ namespace merlin {
     features.geometryShader = true;
     features.tessellationShader = true;
     features.wideLines = true;
-    std::vector<const char*> extensions = {
+    std::vector<const char*> device_extensions = {
       VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
       VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
@@ -126,22 +79,29 @@ namespace merlin {
     device_create_info.queueCreateInfoCount = queue_infos.size();
     device_create_info.pQueueCreateInfos = queue_infos.data();
     device_create_info.pEnabledFeatures = &features;
-    device_create_info.enabledExtensionCount = extensions.size();
-    device_create_info.ppEnabledExtensionNames = extensions.data();
+    device_create_info.enabledExtensionCount = device_extensions.size();
+    device_create_info.ppEnabledExtensionNames = device_extensions.data();
     device_create_info.enabledLayerCount = 0;
 
     VkResult res;
     res = vkCreateDevice(engine->physical_device, &device_create_info, nullptr, &engine->device);
     if(res != VK_SUCCESS) {
       std::cout << res << std::endl;
-      throw -3;
+      std::cerr << "Device creation faild. Shuttin Down." << std::endl;
+      throw;
     }
 
     vkGetDeviceQueue(engine->device, engine->present_index, 0, &engine->present_queue);
     vkGetDeviceQueue(engine->device, engine->graphics_index, 0, &engine->graphics_queue);
     vkGetDeviceQueue(engine->device, engine->transfer_index, 0, &engine->transfer_queue);
-
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(engine->physical_device, window->surface, &window->capabilities);
+    
+    /* --- currently failing --- */
+    res = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(engine->physical_device, window->surface, &window->capabilities);
+    if(res != VK_SUCCESS) {
+      std::cout << res << std::endl;
+      std::cerr << "We could not get surface capabilities. Shutting down." << std::endl;
+      throw;
+    }
 
     uint32_t format_count;
     bool format_found = false;
@@ -197,6 +157,7 @@ namespace merlin {
     }
 
     window->image_count = help::get_image_count(window->capabilities);
+
     window->swapchain = help::create_swapchain(
       window->capabilities,
       window->present_mode,
@@ -208,7 +169,7 @@ namespace merlin {
       window->surface,
       engine->device
     );
-
+    
     vkGetSwapchainImagesKHR(engine->device, window->swapchain, &window->image_count, nullptr);
     window->images.resize(window->image_count);
     vkGetSwapchainImagesKHR(engine->device, window->swapchain, &window->image_count, window->images.data());
@@ -217,8 +178,6 @@ namespace merlin {
     engine->linked_windows.push_back(window);
   }
   void destroy_engine(Engine engine) {
-    return_device(engine.physical_device);
-
     vkDestroyDevice(engine.device, nullptr);
     vkDestroyInstance(engine.instance, nullptr);
   }

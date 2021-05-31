@@ -9,12 +9,9 @@
 #include "../libs/SDL2/include/SDL.h"
 #undef main
 
-enum state{MAIN_MENU, LOAD_MENU, WORLD_CREATE, START_GAME, QUIT};
-
 int main() {
   /* --- set up the simulation engine --- */
   bool game_quit = false;
-  state game_state = MAIN_MENU;
 
   merlin::init();
   merlin::Engine_Init e_init = {true, DISCRETE};
@@ -46,6 +43,8 @@ int main() {
   }while(!game_quit);
 
   /* --- clean up the simulation --- */
+
+
   merlin::destory_window(window);
   merlin::destroy_engine(g_engine);
   merlin::terminate();

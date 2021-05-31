@@ -61,7 +61,8 @@ namespace merlin {
       res = vkCreateInstance(&instance_create_info, nullptr, &instance);
       if(res != VK_SUCCESS) {
         std::cout << res << std::endl;
-        throw 1;
+        std::cerr << "Instance creation faild. Shutting Down." << std::endl;
+        throw;
       }
 
       return instance;
@@ -273,7 +274,8 @@ namespace merlin {
       res = vkCreateSwapchainKHR(device, &swapchain_create_info, nullptr, &swapchain);
       if(res != VK_SUCCESS) {
         std::cout << res << std::endl;
-        throw -4;
+        std::cerr << "The swapchain creation faild. Shutting Down." << std::endl;
+        throw;
       }
       return swapchain;
     }
@@ -313,7 +315,8 @@ namespace merlin {
       res = vkCreateSwapchainKHR(device, &swapchain_create_info, nullptr, &swapchain);
       if(res != VK_SUCCESS) {
         std::cout << res << std::endl;
-        throw -5;
+        std::cerr << "The swapchain recreation faild. Shutting Down." << std::endl;
+        throw;
       }
       return new_swapchain;
     }
