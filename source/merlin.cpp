@@ -169,6 +169,43 @@ namespace merlin {
       window->surface,
       engine->device
     );
+
+    window->max_frames = 3;
+    window->current_frame = 0;
+
+    VkSemaphoreTypeCreateInfo timeline_info = {};
+    timeline_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+    timeline_info.pNext = nullptr;
+    timeline_info.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+    timeline_info.initialValue = 0;
+
+    VkSemaphoreCreateInfo timeline_create_info = {};
+    timeline_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    timeline_create_info.pNext = &timeline_info;
+    timeline_create_info.flags = 0;
+
+    VkSemaphoreCreateInfo binary_create_info = {};
+    binary_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    binary_create_info.pNext = nullptr;
+    binary_create_info.flags = 0;
+
+    window->render_finished_semaphores.resize(window->max_frames);
+    window->image_available_semaphores.resize(window->max_frames);
+    for(uint32_t i=0; i<window->max_frames; i++) {
+      res = vkCreateSemaphore(engine->device, &binary_create_info, nullptr, &window->image_available_semaphores[i]);
+      if(res != VK_SUCCESS) {
+        std::cout << res << std::endl;
+        std::cerr << "The binary semaphore could not be created. Shutting Down." << std::endl;
+        throw;
+      }
+
+      res = vkCreateSemaphore(engine->device, &timeline_create_info, nullptr, &window->render_finished_semaphores[i]);
+      if(res != VK_SUCCESS) {
+        std::cout << res << std::endl;
+        std::cerr << "The timeline semaphore could not be created. Shutting down." << std::endl;
+        throw;
+      }
+    }
     
     vkGetSwapchainImagesKHR(engine->device, window->swapchain, &window->image_count, nullptr);
     window->images.resize(window->image_count);
@@ -183,6 +220,11 @@ namespace merlin {
   }
   void destory_window(Window window) {
     if(!window.destroyed) {
+      for(uint32_t i=0; i<window.max_frames; i++) {
+        vkDestroySemaphore(window.linked_engine->device, window.image_available_semaphores[i], nullptr);
+        vkDestroySemaphore(window.linked_engine->device, window.render_finished_semaphores[i], nullptr);
+      }
+
       vkDestroySwapchainKHR(window.linked_engine->device, window.swapchain, nullptr);
       vkDestroySurfaceKHR(window.linked_engine->instance, window.surface, nullptr);
       SDL_DestroyWindow(window.ptr);

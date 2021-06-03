@@ -182,6 +182,20 @@ def build(debug, rebuild, verbose):
     os.chdir('..')
     shutil.rmtree('sdl2-build')
 
+  for file_name in os.listdir('shaders'):
+    if '.vert' in file_name:
+      new_name  = file_name.split('.')
+      new_name = f'{new_name[0]}_vert.spv'
+      run(['glslc', f'shaders/{file_name}', '-o', f'Empire/shaders/{new_name}'])
+
+    elif '.frag' in file_name:
+      new_name  = file_name.split('.')
+      new_name = f'{new_name[0]}_frag.spv'
+      run(['glslc', f'shaders/{file_name}', '-o', f'Empire/shaders/{new_name}'])
+
+    else:
+      print('Unrecognised shader found.')
+
   execute(clang_flags, nvcc_flags)
 
 def main(arguments):
