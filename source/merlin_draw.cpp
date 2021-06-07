@@ -66,48 +66,40 @@ namespace merlin {
       throw;
     }
 
-    // set up the buffers for placing the data
-    uint32_t loaded_count;
+    //set up the unloaded data buffer
     if(init.activated) {
-      loaded_count = init.loaded.size() + 1;
+      graph.unloaded_states.push_back(init.active);
     }
-    else {
-      loaded_count = init.loaded.size();
+    for(auto state_init : init.loaded) {
+      graph.unloaded_states.push_back(state_init);
     }
-    graph.loaded_states.resize(loaded_count);
-    graph.unloaded_states.resize(init.unloaded.size() + loaded_count);
-
-    // load the create info into the unloaded buffer
-    if(init.activated) {
-      graph.unloaded_states[0] = init.active;
-    }
-    for(uint32_t i=1; i<loaded_count; i++) {
-      graph.unloaded_states[i] = init.loaded[i-1];
-    }
-    for(uint32_t i=loaded_count; i<init.unloaded.size() + loaded_count; i++) {
-      graph.unloaded_states[i] = init.unloaded[i-loaded_count];
+    for(auto state_init : init.unloaded) {
+      graph.unloaded_states.push_back(state_init);
     }
 
     // now load the loaded data
-    for(uint32_t i=0; i<graph.unloaded_states.size(); i++) {
-      int search_id = graph.unloaded_states[i].id;
-
-      for(uint32_t j=0; j<graph.loaded_states.size(); j++) {
-        int key_id = graph.loaded_states[j].id;
-        int active_id = init.active.id;
-
-        if(search_id == key_id || search_id == active_id) {
-          load_state(search_id, &graph);
+    if(init.activated) {
+      int active_id = init.active.id;
+      for(uint32_t i=0; i<graph.unloaded_states.size(); i++) {
+        if(active_id == graph.unloaded_states[i].id) {
+          load_state(active_id, &graph);
+          activate_state(active_id, &graph);
+          break;
         }
       }
     }
 
-    if(init.activated) {
-      for(uint32_t i=0; i<graph.loaded_states.size(); i++) {
-        if(init.active.id == graph.loaded_states[i].id) {
-          graph.activated = true;
-          graph.active_state = &graph.loaded_states[i];
+    for(uint32_t i=0; i<init.loaded.size(); i++) {
+      bool found = false;
+      for(uint32_t j=0; j<graph.unloaded_states.size(); j++) {
+        if(graph.unloaded_states[j].id == init.loaded[i].id) {
+          load_state(init.loaded[i].id, &graph);
+          found = true;
+          break;
         }
+      }
+      if(!found) {
+        std::cerr << "The state with id: " << init.loaded[i].id << "could not be found." << std::endl;
       }
     }
     return graph;
@@ -116,6 +108,9 @@ namespace merlin {
     VkDevice device = graph.linked_window->linked_engine->device;
     for(auto view : graph.views) {
       vkDestroyImageView(device, view, nullptr);
+    }
+    for(auto state : graph.loaded_states) {
+      unload_state(state.id, &graph);
     }
 
     vkDestroyCommandPool(device, graph.draw_pool, nullptr);
@@ -146,6 +141,8 @@ namespace merlin {
 
     // the construction of the state begins here
     State state = {};
+    state.id = state_init.id;
+
     state.vertex_module = help::create_shader_module(state_init.shader.vertex_path, device);
     state.fragment_module = help::create_shader_module(state_init.shader.fragment_path, device);
     state.geometry = state_init.shader.geometry;
@@ -327,53 +324,56 @@ namespace merlin {
 
       VkAttachmentReference depth_stencil_refrence = {};
       if(subpass_init.depth_stencil) {
-        depth_stencil_refrence.attachment = (uint32_t)subpass_init.depth_stencil_attachment;
-        depth_stencil_refrence.layout = help::choose_layout(
-          state_init.render_pass.attachments[subpass_init.depth_stencil_attachment]._layouts
-        );
+        VkAttachmentReference reference = {};
+        reference.attachment = (uint32_t)subpass_init.depth_stencil_attachment;
+        reference.layout = help::choose_layout(state_init.render_pass.attachments[subpass_init.depth_stencil_attachment]._layouts);
+
+        depth_stencil_refrence = reference;
       }
-      std::vector<VkAttachmentReference> color_refrences(subpass_init.color_attachments.size());
+      std::vector<VkAttachmentReference> color_refrences = {};
       for(uint32_t j=0; j<color_refrences.size(); j++) {
-        color_refrences[j].attachment = (uint32_t)subpass_init.color_attachments[j];
-        color_refrences[j].layout = help::choose_layout(
-          state_init.render_pass.attachments[subpass_init.color_attachments[j]]._layouts
-        );
+        VkAttachmentReference reference = {};
+        reference.attachment = (uint32_t)subpass_init.color_attachments[j];
+        reference.layout = help::choose_layout(state_init.render_pass.attachments[subpass_init.color_attachments[j]]._layouts);
+
+        color_refrences.push_back(reference);
       }
-      std::vector<VkAttachmentReference> input_refrences(subpass_init.input_attachments.size());
+      std::vector<VkAttachmentReference> input_refrences = {};
       for(uint32_t j=0; j<input_refrences.size(); j++) {
-        input_refrences[j].attachment = (uint32_t)subpass_init.input_attachments[j];
-        input_refrences[j].layout = help::choose_layout(
-          state_init.render_pass.attachments[subpass_init.input_attachments[j]]._layouts
-        );
+        VkAttachmentReference reference = {};
+        reference.attachment = (uint32_t)subpass_init.input_attachments[j];
+        reference.layout = help::choose_layout(state_init.render_pass.attachments[subpass_init.input_attachments[j]]._layouts);
+
+        input_refrences.push_back(reference);
       }
-      std::vector<uint32_t> preserve_refrences(subpass_init.preserve_attachments.size());
+      std::vector<uint32_t> preserve_refrences = {};
       for(uint32_t j=0; j<preserve_refrences.size(); j++) {
-        input_refrences[j].attachment = (uint32_t)subpass_init.preserve_attachments[j];
-        input_refrences[j].layout = help::choose_layout(
-          state_init.render_pass.attachments[subpass_init.preserve_attachments[j]]._layouts
-        );
+        preserve_refrences.push_back((uint32_t)subpass_init.preserve_attachments[j]);
       }
-      std::vector<VkAttachmentReference> resolve_refrences(subpass_init.resolve_attachments.size());
+      std::vector<VkAttachmentReference> resolve_refrences = {};
       for(uint32_t j=0; j<resolve_refrences.size(); j++) {
-        input_refrences[j].attachment = (uint32_t)subpass_init.resolve_attachments[j];
-        input_refrences[j].layout = help::choose_layout(
-          state_init.render_pass.attachments[subpass_init.resolve_attachments[j]]._layouts
-        );
+        VkAttachmentReference reference = {};
+        reference.attachment = (uint32_t)subpass_init.resolve_attachments[j];
+        reference.layout = help::choose_layout(state_init.render_pass.attachments[subpass_init.resolve_attachments[j]]._layouts);
+
+        resolve_refrences.push_back(reference);
       }
 
-      subpasses[i].flags = 0;
+      VkSubpassDescription subpass = {};
+      subpass.flags = 0;
       switch(subpass_init.point)
       {
         case GRAPHICS:
-          subpasses[i].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+          subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
           break;
       }
-      subpasses[i].colorAttachmentCount = color_refrences.size();
-      subpasses[i].pColorAttachments = color_refrences.data();
-      subpasses[i].inputAttachmentCount = input_refrences.size();
-      subpasses[i].pInputAttachments = input_refrences.data();
-      subpasses[i].pPreserveAttachments = preserve_refrences.data();
-      subpasses[i].pResolveAttachments = resolve_refrences.data();
+      subpass.colorAttachmentCount = color_refrences.size();
+      subpass.pColorAttachments = color_refrences.data();
+      subpass.inputAttachmentCount = input_refrences.size();
+      subpass.pInputAttachments = input_refrences.data();
+      subpass.pPreserveAttachments = preserve_refrences.data();
+      subpass.pResolveAttachments = resolve_refrences.data();
+      subpasses[i] = subpass;
     }
 
     std::vector<VkSubpassDependency> dependencies = {}; // implement dependencies later
@@ -511,7 +511,11 @@ namespace merlin {
       }
     }
 
-    graph->loaded_states.push_back(state);
+    uint32_t size = graph->loaded_states.size();
+    graph->loaded_states.resize(size + 1);
+
+    uint32_t last_place = graph->loaded_states.size() - 1;
+    graph->loaded_states[last_place] = state;
   }
   void unload_state(int id, Graph* graph) {
     State state;
@@ -549,7 +553,21 @@ namespace merlin {
     graph->loaded_states.erase(state_it);
   }
   void activate_state(int id, Graph* graph) {
+    bool found = false;
+    for(uint32_t i=0; i<graph->loaded_states.size(); i++) {
+      int search_id = graph->loaded_states[i].id;
+      if(search_id == id) {
+        graph->activated = true;
+        graph->active_state = &graph->loaded_states[i];
 
+        found = true;
+        break;
+      }
+    }
+    if(!found) {
+      std::cerr << "The state could not be found to be activated. Did you load it?" << std::endl;
+      throw;
+    }
   }
 
   void draw(std::vector<Graph*> graphs) {

@@ -55,7 +55,7 @@ int main() {
   test_render_pass.dependencies = {};
 
   merlin::State_Init test_state_init = {};
-  test_state_init.id = 0;
+  test_state_init.id = 2;
   test_state_init.shader = test_shader;
   test_state_init.input = test_input;
   test_state_init.fixed_functions = test_fixed;

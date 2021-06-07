@@ -339,12 +339,14 @@ namespace merlin {
     }
 
     VkShaderModule create_shader_module(std::string shader_path, VkDevice device) {
+      std::vector<char> code = read_file(shader_path);
+
       VkShaderModuleCreateInfo module_create_info = {};
       module_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
       module_create_info.pNext = nullptr;
       module_create_info.flags = 0;
-      module_create_info.codeSize = read_file(shader_path).size();
-      module_create_info.pCode = reinterpret_cast<const uint32_t*>(read_file(shader_path).data());
+      module_create_info.codeSize = code.size();
+      module_create_info.pCode = reinterpret_cast<const uint32_t*>(code.data());
 
       VkShaderModule shader_module;
       VkResult res = vkCreateShaderModule(device, &module_create_info, nullptr, &shader_module);
