@@ -134,6 +134,7 @@ namespace merlin {
   void dllexport load_state(int id, Graph* graph);
   void dllexport unload_state(int id, Graph* graph);
   void dllexport activate_state(int id, Graph* graph);
+  void dllexport deactivate_state(Graph* graph);
 
   void dllexport draw(std::vector<Graph*> graphs);
 }

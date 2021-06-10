@@ -1,6 +1,8 @@
 #include "../include/merlin_draw.hpp"
 #include "../include/merlin_help.hpp"
 
+#include <map>
+#include <thread>
 #include <iostream>
 
 namespace merlin {
@@ -569,51 +571,88 @@ namespace merlin {
       throw;
     }
   }
+  void deactivate_state(Graph* graph) {
+    graph->activated = false;
+    graph->active_state = nullptr;
+  }
 
-  void draw(std::vector<Graph*> graphs) {
+  void subdraw(std::vector<Graph*> graphs, Window* window, Engine* engine) {
     VkResult res;
-    Window* window = graphs[0]->linked_window;
-    Engine* engine = window->linked_engine;
-    VkDevice device = engine->device;
+    vkWaitForFences(engine->device, 1, &window->in_flight_fences[window->current_frame], VK_TRUE, UINT64_MAX);
 
     uint32_t image_index;
-    vkAcquireNextImageKHR(device, window->swapchain, UINT64_MAX, window->image_available_semaphores[window->current_frame], VK_NULL_HANDLE, &image_index);
-
-    VkPipelineStageFlags wait_mask[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    std::vector<VkSubmitInfo> queue_submit_infos(graphs.size());
-    for(uint32_t i=0; i<queue_submit_infos.size(); i++) {
-      queue_submit_infos[i].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-      queue_submit_infos[i].pNext = nullptr;
-      queue_submit_infos[i].waitSemaphoreCount = 1;
-      queue_submit_infos[i].pWaitSemaphores = &window->image_available_semaphores[window->current_frame];
-      queue_submit_infos[i].pWaitDstStageMask = wait_mask;
-      queue_submit_infos[i].commandBufferCount = 1;
-      queue_submit_infos[i].pCommandBuffers = &graphs[i]->active_state->draw_buffers[image_index];
-      queue_submit_infos[i].signalSemaphoreCount = 1;
-      queue_submit_infos[i].pSignalSemaphores = &window->render_finished_semaphores[window->current_frame];
+    vkAcquireNextImageKHR(engine->device, window->swapchain, UINT64_MAX, window->image_available_semaphores[window->current_frame], VK_NULL_HANDLE, &image_index);
+    if (window->images_in_flight[image_index] != VK_NULL_HANDLE) {
+      vkWaitForFences(engine->device, 1, &window->images_in_flight[image_index], VK_TRUE, UINT64_MAX);
     }
-    res = vkQueueSubmit(engine->graphics_queue, queue_submit_infos.size(), queue_submit_infos.data(), VK_NULL_HANDLE);
+    window->images_in_flight[image_index] = window->in_flight_fences[window->current_frame];
+
+    std::vector<VkSubmitInfo> submit_infos(graphs.size());
+    for(uint32_t i=0; i<submit_infos.size(); i++) {
+      VkSubmitInfo submit_info = {};
+      submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+      VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+      submit_info.waitSemaphoreCount = 1;
+      submit_info.pWaitSemaphores = &window->image_available_semaphores[window->current_frame];
+      submit_info.pWaitDstStageMask = wait_stages;
+
+      submit_info.commandBufferCount = 1;
+      submit_info.pCommandBuffers = &graphs[i]->active_state->draw_buffers[image_index];
+
+      submit_info.signalSemaphoreCount = 1;
+      submit_info.pSignalSemaphores = &window->render_finished_semaphores[window->current_frame];
+
+      submit_infos[i] = submit_info;
+    }
+
+    vkResetFences(engine->device, 1, &window->in_flight_fences[window->current_frame]);
+    res = vkQueueSubmit(engine->graphics_queue, submit_infos.size(), submit_infos.data(), window->in_flight_fences[window->current_frame]);
     if(res != VK_SUCCESS) {
-      std::cout << res << std::endl;
-      std::cerr << "The graphics opperations could not be submitted. Shutting Down." << std::endl;
       throw;
     }
 
-    VkPresentInfoKHR present_info = {}; 
+    VkPresentInfoKHR present_info = {};
     present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    present_info.pNext = nullptr;
     present_info.waitSemaphoreCount = 1;
     present_info.pWaitSemaphores = &window->render_finished_semaphores[window->current_frame];
     present_info.swapchainCount = 1;
     present_info.pSwapchains = &window->swapchain;
     present_info.pImageIndices = &image_index;
-    present_info.pResults = nullptr;
+
     res = vkQueuePresentKHR(engine->present_queue, &present_info);
     if(res != VK_SUCCESS) {
       std::cout << res << std::endl;
-      std::cerr << "The presentation faild. Shutting Down." << std::endl;
+      std::cerr << "The present operation seems to have faild. Shutting Down." << std::endl;
+      throw;
     }
 
     window->current_frame = (window->current_frame + 1) % window->max_frames;
+  }
+
+  void draw(std::vector<Graph*> graphs) {
+    // sort out how many windows have objects in the graphs list
+    std::map<std::string, int> graph_counts;
+    std::map<std::string, std::vector<Graph*>> graph_pointers;
+    for(auto graph_ptr : graphs) {
+      std::string title = graph_ptr->linked_window->title;
+      if(graph_counts.find(title) != graph_counts.end()) {
+        graph_counts[title] += 1;
+        graph_pointers[title].push_back(graph_ptr);
+      }
+      else {
+        graph_counts[title] = 1;
+        graph_pointers[title] = { graph_ptr };
+      }
+    }
+
+    // at the moment we draw all of this synchronasly but later this will be changed for preformence
+    for(auto key_value_pair : graph_pointers) {
+      auto graph_pointers = key_value_pair.second;
+      auto window = graph_pointers[0]->linked_window;
+      auto engine = window->linked_engine;
+
+      subdraw(graph_pointers, window, engine);
+    }
   }
 }

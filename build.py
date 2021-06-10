@@ -92,6 +92,8 @@ def execute(clang_flags, nvcc_flags):
       'source/merlin.cpp',
       'source/merlin_draw.cpp',
 
+      'source/ui.cpp',
+
       '-I/Vulkan/1.2.176.1/x86_64/include/',
       '-Ilibs/SDL2/include',
 
