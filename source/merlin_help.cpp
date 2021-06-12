@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <vector>
+#include <fstream>
 
 uint32_t find_minimum_index(std::vector<int> values) {
   int min = 100;
@@ -15,6 +16,22 @@ uint32_t find_minimum_index(std::vector<int> values) {
     }
   }
   return min_index;
+}
+
+std::vector<char> read_file(std::string path) {
+  std::ifstream file(path, std::ios::ate | std::ios::binary);
+  if(!file.is_open()) {
+    throw std::runtime_error("failed to open file!");
+  }
+
+  size_t fileSize = (size_t) file.tellg();
+  std::vector<char> buffer(fileSize);
+
+  file.seekg(0);
+  file.read(buffer.data(), fileSize);
+
+  file.close();
+  return buffer;
 }
 
 namespace merlin {
@@ -61,7 +78,8 @@ namespace merlin {
       res = vkCreateInstance(&instance_create_info, nullptr, &instance);
       if(res != VK_SUCCESS) {
         std::cout << res << std::endl;
-        throw 1;
+        std::cerr << "Instance creation faild. Shutting Down." << std::endl;
+        throw;
       }
 
       return instance;
@@ -273,7 +291,8 @@ namespace merlin {
       res = vkCreateSwapchainKHR(device, &swapchain_create_info, nullptr, &swapchain);
       if(res != VK_SUCCESS) {
         std::cout << res << std::endl;
-        throw -4;
+        std::cerr << "The swapchain creation faild. Shutting Down." << std::endl;
+        throw;
       }
       return swapchain;
     }
@@ -313,9 +332,169 @@ namespace merlin {
       res = vkCreateSwapchainKHR(device, &swapchain_create_info, nullptr, &swapchain);
       if(res != VK_SUCCESS) {
         std::cout << res << std::endl;
-        throw -5;
+        std::cerr << "The swapchain recreation faild. Shutting Down." << std::endl;
+        throw;
       }
       return new_swapchain;
+    }
+
+    VkShaderModule create_shader_module(std::string shader_path, VkDevice device) {
+      std::vector<char> code = read_file(shader_path);
+
+      VkShaderModuleCreateInfo module_create_info = {};
+      module_create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+      module_create_info.pNext = nullptr;
+      module_create_info.flags = 0;
+      module_create_info.codeSize = code.size();
+      module_create_info.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+      VkShaderModule shader_module;
+      VkResult res = vkCreateShaderModule(device, &module_create_info, nullptr, &shader_module);
+      if(res != VK_SUCCESS) {
+        std::cout << res << std::endl;
+        std::cerr << "Shader module could not be created. Shutting down." << std::endl;
+        throw;
+      }
+      return shader_module;
+    }
+
+    VkPipelineInputAssemblyStateCreateInfo create_input_assemply(input_topology topology, bool reuse) {
+      VkPipelineInputAssemblyStateCreateInfo input_assemply = {};
+      input_assemply.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+      input_assemply.pNext = nullptr;
+      input_assemply.flags = 0;
+      switch(topology)
+      {
+        case POINT_LIST:
+          input_assemply.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+          break;
+        case LINE_LIST:
+          input_assemply.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+          break;
+        case LINE_STRIP:
+          input_assemply.topology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+          break;
+        case TRIANGLE_LIST:
+          input_assemply.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+          break;
+        case TRIANGLE_STRIP:
+          input_assemply.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+          break;
+        case TRIANGLE_FAN:
+          input_assemply.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+          break;
+      }
+      if(reuse) {
+        input_assemply.primitiveRestartEnable = VK_TRUE;
+      }
+      else {
+        input_assemply.primitiveRestartEnable = VK_FALSE;
+      }
+
+      return input_assemply;
+    }
+
+    VkAttachmentDescription create_attachment_description(int sample_count, VkFormat image_format, ops data_ops, ops stencil_ops, layouts layouts) {
+      VkAttachmentDescription attachment = {};
+      attachment.flags = 0;
+      attachment.format = image_format;
+      switch(sample_count)
+      {
+        case 1:
+          attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+          break;
+        case 2:
+          attachment.samples = VK_SAMPLE_COUNT_2_BIT;
+          break;
+        case 4:
+          attachment.samples = VK_SAMPLE_COUNT_4_BIT;
+          break;
+        case 8:
+          attachment.samples = VK_SAMPLE_COUNT_8_BIT;
+          break;
+        case 16:
+          attachment.samples = VK_SAMPLE_COUNT_16_BIT;
+          break;
+        case 32:
+          attachment.samples = VK_SAMPLE_COUNT_32_BIT;
+          break;
+        case 64:
+          attachment.samples = VK_SAMPLE_COUNT_64_BIT;
+          break;
+      }
+      switch(data_ops)
+      {
+        case LOAD_STORE:
+          attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+          attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+          break;
+        case LOAD_DONT_CARE:
+          attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+          attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+          break;
+        case CLEAR_STORE:
+          attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+          attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+          break;
+        case CLEAR_DONT_CARE:
+          attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+          attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+          break;
+        case DONT_CARE_STORE:
+          attachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+          attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+          break;
+        case DONT_CARE:
+          attachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+          attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+          break;
+      }
+      switch(stencil_ops)
+      {
+        case LOAD_STORE:
+          attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+          attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+          break;
+        case LOAD_DONT_CARE:
+          attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+          attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+          break;
+        case CLEAR_STORE:
+          attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+          attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+          break;
+        case CLEAR_DONT_CARE:
+          attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+          attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+          break;
+        case DONT_CARE_STORE:
+          attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+          attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+          break;
+        case DONT_CARE:
+          attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+          attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+          break;
+      }
+      switch(layouts)
+      {
+        case UNDEFINED_PRESENT:
+          attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+          attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+          break;
+      }
+      return attachment;
+    }
+
+    VkImageLayout choose_layout(layouts transition_layouts) {
+      VkImageLayout layout;
+      switch(transition_layouts)
+      {
+        case UNDEFINED_PRESENT:
+          layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+          break;
+      }
+      return layout;
     }
   }
 }

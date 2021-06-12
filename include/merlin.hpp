@@ -1,7 +1,11 @@
 #ifndef MERLIN
 #define MERLIN
 
-#define dllexport __declspec( dllexport )
+#ifdef _WIN32
+  #define dllexport __declspec( dllexport )
+#else 
+  #define dllexport
+#endif
 
 #include <vulkan/vulkan.h>
 #include "../libs/SDL2/include/SDL.h"
@@ -12,11 +16,12 @@
 enum gpu_type{DISCRETE, INTEGRATED};
 
 namespace merlin {
-  void dllexport init();
-  void dllexport terminate();
-
   struct Engine;
   struct Window;
+
+
+  void dllexport init();
+  void dllexport terminate();
 
   struct dllexport Engine_Init
   {
@@ -36,7 +41,6 @@ namespace merlin {
     VkQueue present_queue;
     VkQueue graphics_queue;
     VkQueue transfer_queue;
-
     std::vector<Window*> linked_windows;
   };
 
@@ -65,8 +69,16 @@ namespace merlin {
 
     uint32_t image_count;
     VkExtent2D extent_2d;
-    std::vector<VkImage> images;
 
+    uint32_t max_frames;
+    uint32_t current_frame;
+
+    std::vector<VkFence> in_flight_fences;
+    std::vector<VkFence> images_in_flight;
+    std::vector<VkSemaphore> image_available_semaphores;
+    std::vector<VkSemaphore> render_finished_semaphores;
+
+    std::vector<VkImage> images;
     Engine* linked_engine;
   };
   
