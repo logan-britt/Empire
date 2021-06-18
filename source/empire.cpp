@@ -9,6 +9,8 @@
 #include "../include/place_resorces.hpp"
 
 #include "../libs/SDL2/include/SDL.h"
+
+#include <iostream>
 #undef main
 
 // the gloabal declerations for simulation data
@@ -22,6 +24,9 @@ major_state simulation_major_state;
 std::vector<merlin::Graph*> draw_targets;
 std::vector<ui::Button*> buttons;
 std::vector<ui::Panel*> panels;
+
+uint32_t click_state;
+float mouse_x, mouse_y;
 
 
 
@@ -45,13 +50,15 @@ void load_simulation();
 int main() {
   /* --- set up the simulation engine --- */
   merlin::init();
-  merlin::Engine_Init e_init = {false, DISCRETE};
+  merlin::Engine_Init e_init = {true, DISCRETE};
   merlin::Window_Init w_init = {1280, 720, "Empire", true};
   merlin::jump_engine(w_init, &window, e_init, &g_engine);
 
   game_quit = false;
   draw_targets = {};
   load_main_menu();
+
+  int _mouse_x, _mouse_y;
 
   /* --- the main simulation loop --- */
   do
@@ -88,12 +95,18 @@ int main() {
     }
 
     /* --- update simulation data --- */
+    click_state = SDL_GetMouseState(&_mouse_x, &_mouse_y);
+    mouse_x = (float)_mouse_x;
+    mouse_y = (float)_mouse_y;
     
     /* --- render the simulation data --- */
     merlin::draw(draw_targets);
   }while(!game_quit);
 
   /* --- clean up the simulation --- */
+  for(auto button : buttons) {
+    ui::destroy_button(button);
+  }
 
   merlin::destory_window(window);
   merlin::destroy_engine(g_engine);
@@ -106,8 +119,23 @@ int main() {
 
 
 void main_menu_handel(SDL_Event event) {
+  bool clicked = event.type == SDL_MOUSEBUTTONDOWN;
+
   for(auto button : buttons) {
-    
+    if(ui::inside(mouse_x, mouse_y, button) && clicked) {
+      if(button->title == "Create World") {
+        load_world_create();
+      }
+      else if(button->title == "Start Simulation") {
+        load_simulation();
+      }
+      else if(button->title == "Load Simulation") {
+        load_load();
+      }
+      else {
+        game_quit = true;
+      }
+    }
   }
 }
 void world_create_handel(SDL_Event event) {
@@ -154,25 +182,87 @@ void load_main_menu() {
 
   ui::Button* world_create_button = ui::create_button(world_create_init, &window);
   ui::activate_graphics(world_create_button);
-
   buttons.push_back(world_create_button);
   draw_targets.push_back(&world_create_button->render_graph);
 
-  //ui::Button_Init start_simulation_init = {};
-  //ui::Button* start_simultion_button = ui::create_button(start_simulation_init, &window);
+  ui::Button_Init start_simulation_init = {};
+  start_simulation_init.x = window_width/2.0f - button_width/2.0f;
+  start_simulation_init.y = outer_gap + button_height + inner_gap;
+  start_simulation_init.width = button_width;
+  start_simulation_init.height = button_height;
+  start_simulation_init.text = "Start Simulation";
 
-  //ui::Button_Init load_simulation_init = {};
-  //ui::Button* load_simulation_button = ui::create_button(load_simulation_init, &window);
+  ui::Button* start_simultion_button = ui::create_button(start_simulation_init, &window);
+  ui::activate_graphics(start_simultion_button);
+  buttons.push_back(start_simultion_button);
+  draw_targets.push_back(&start_simultion_button->render_graph);
 
-  //ui::Button_Init quit_button_init = {};
-  //ui::Button* quit_button = ui::create_button(quit_button_init, &window);
+  ui::Button_Init load_simulation_init = {};
+  load_simulation_init.x = window_width/2.0f - button_width/2.0f;
+  load_simulation_init.y = outer_gap + 2.0f*button_height + 2.0f*inner_gap;
+  load_simulation_init.width = button_width;
+  load_simulation_init.height = button_height;
+  load_simulation_init.text = "Load Simulation";
+
+  ui::Button* load_simulation_button = ui::create_button(load_simulation_init, &window);
+  ui::activate_graphics(load_simulation_button);
+  buttons.push_back(load_simulation_button);
+  draw_targets.push_back(&load_simulation_button->render_graph);
+
+  ui::Button_Init quit_button_init = {};
+  quit_button_init.x = window_width/2.0f - button_width/2.0f;
+  quit_button_init.y = outer_gap + 3.0f*button_height + 3.0f*inner_gap;
+  quit_button_init.width = button_width;
+  quit_button_init.height = button_height;
+  quit_button_init.text = "Quit";
+
+  ui::Button* quit_button = ui::create_button(quit_button_init, &window);
+  ui::activate_graphics(quit_button);
+  buttons.push_back(quit_button);
+  draw_targets.push_back(&quit_button->render_graph);
 }
 void load_world_create() {
+  /* --- clean up the global data from the previous scene --- */
+  if(!buttons.empty()) {
+    for(auto button : buttons) {
+      ui::destroy_button(button);
+    }
+  }
+  if(!panels.empty()) {
+    for(auto panel : panels) {
+      
+    }
+  }
 
+  /* ---  --- */
 }
 void load_load() {
+  /* --- clean up the global data from the previous scene --- */
+  if(!buttons.empty()) {
+    for(auto button : buttons) {
+      ui::destroy_button(button);
+    }
+  }
+  if(!panels.empty()) {
+    for(auto panel : panels) {
+      
+    }
+  }
 
+  /* ---  --- */
 }
 void load_simulation() {
+  /* --- clean up the global data from the previous scene --- */
+  if(!buttons.empty()) {
+    for(auto button : buttons) {
+      ui::destroy_button(button);
+    }
+  }
+  if(!panels.empty()) {
+    for(auto panel : panels) {
+      
+    }
+  }
 
+  /* ---  --- */
 }

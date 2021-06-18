@@ -1,12 +1,6 @@
 #ifndef MERLIN_GRAPH
 #define MERLIN_GRAPH
 
-#ifdef _WIN32
-  #define dllexport __declspec( dllexport )
-#else
-  #define dllexport
-#endif
-
 #include <vulkan/vulkan.h>
 #include "../libs/SDL2/include/SDL.h"
 #include "../include/merlin.hpp"
@@ -21,7 +15,7 @@ namespace merlin {
   enum layouts{UNDEFINED_PRESENT};
   enum bind_point{GRAPHICS};
 
-  struct dllexport Shader
+  struct Shader
   {
     std::string name;
     std::string vertex_path;
@@ -29,34 +23,34 @@ namespace merlin {
     bool geometry;
     std::string geometry_path;
   };
-  struct dllexport Input
+  struct Input
   {
     bool input_data;
   };
-  struct dllexport Fixed_Functions
+  struct Fixed_Functions
   {
     bool reuse;
     input_topology topology;
     polygon_mode mode;
     float line_width;
   };
-  struct dllexport Multisampling
+  struct Multisampling
   {
     bool enable;
   };
-  struct dllexport Uniform
+  struct Uniform
   {
     bool uniform;
   };
 
-  struct dllexport Attachment
+  struct Attachment
   {
     int sample_count;
     ops data_ops;
     ops stencil_ops;
     layouts _layouts;
   };
-  struct dllexport Subpass
+  struct Subpass
   {
     bind_point point;
     bool depth_stencil;
@@ -66,10 +60,10 @@ namespace merlin {
     std::vector<int> preserve_attachments;
     std::vector<int> resolve_attachments;
   };
-  struct dllexport Dependency
+  struct Dependency
   {
   };
-  struct dllexport Render_Pass
+  struct Render_Pass
   {
     std::vector<Attachment> attachments;
     std::vector<Subpass> subpasses;
@@ -77,7 +71,7 @@ namespace merlin {
 
   };
 
-  struct dllexport State_Init
+  struct State_Init
   {
     int id;
     Shader shader;
@@ -105,7 +99,7 @@ namespace merlin {
   };
 
 
-  struct dllexport Graph_Init
+  struct Graph_Init
   {
     bool activated = false;
     State_Init active;
@@ -113,7 +107,7 @@ namespace merlin {
     std::vector<State_Init> unloaded;
   };
 
-  struct dllexport Graph
+  struct Graph
   {
     std::vector<VkImageView> views;
     VkCommandPool draw_pool;
@@ -128,15 +122,15 @@ namespace merlin {
     Window* linked_window;
   };
 
-  Graph dllexport create_graph(Graph_Init init, Window* window);
-  void dllexport destroy_graph(Graph graph);
+  Graph create_graph(Graph_Init init, Window* window);
+  void destroy_graph(Graph graph);
 
-  void dllexport load_state(int id, Graph* graph);
-  void dllexport unload_state(int id, Graph* graph);
-  void dllexport activate_state(int id, Graph* graph);
-  void dllexport deactivate_state(Graph* graph);
+  void load_state(int id, Graph* graph);
+  void unload_state(int id, Graph* graph);
+  void activate_state(int id, Graph* graph);
+  void deactivate_state(Graph* graph);
 
-  void dllexport draw(std::vector<Graph*> graphs);
+  void draw(std::vector<Graph*> graphs);
 }
 
 #endif

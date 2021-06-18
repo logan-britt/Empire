@@ -251,7 +251,7 @@ namespace merlin {
 
     VkPipelineMultisampleStateCreateInfo multisample = {};
     if(state_init.multisampling.enable) {
-
+      
     }
     else {
       multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
@@ -614,6 +614,7 @@ namespace merlin {
 
     VkPresentInfoKHR present_info = {};
     present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    present_info.pNext = nullptr;
     present_info.waitSemaphoreCount = 1;
     present_info.pWaitSemaphores = &window->render_finished_semaphores[window->current_frame];
     present_info.swapchainCount = 1;

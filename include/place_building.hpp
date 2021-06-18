@@ -15,6 +15,8 @@ namespace place {
   struct dllexport Compound
   {
   };
+
+  
 }
 
 #endif 

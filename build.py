@@ -35,50 +35,20 @@ def clean():
 def execute(clang_flags, nvcc_flags):
   if 'win' in sys.platform:
     run([
-      'clang++', 
-      'source/merlin_help.cpp',
-      'source/merlin.cpp',
-      'source/merlin_draw.cpp',
-
-      '-I/Vulkan/1.2.176.1/x86_64/include/',
-      '-Ilibs/SDL2/include',
-    
-      '-LD:/Programming/Vulkan/x64/libs/'
-      '-LEmpire'
-      '-lvulkan-1',
-      '-lsdl2d',
-
-      *clang_flags,
-      '--shared',
-    
-      '-o',
-      f'Empire/libMerlin.dll'
-    ])
-  
-    run([
-      'clang++',
-      'source/place.cpp',
-      'source/place_building.cpp',
-      'source/place_people.cpp',
-      'source/place_resorces.cpp',
-
-      *clang_flags,
-      '--shared',
-
-      '-o',
-      f'Empire/libPlace.dll'
-    ])
-
-    run([
       'nvcc',
       'source/empire.cpp',
-  
-      '-I/Vulkan/1.2.176.1/x86_64/include/',
+      'source/ui.cpp',
+
+      'source/merlin.cpp',
+      'source/merlin_help.cpp',
+      'source/merlin_draw.cpp',
+      
+      '-ID:/Programming/Vulkan/1.2.162.1/include/',
       '-Ilibs/SDL2/include',
       *nvcc_flags,
-  
-      '-lEmpire/libMerlin',
-      '-lEmpire/libPlace',
+
+      '-LD:/Programming/Vulkan/1.2.162.1/Lib',
+      '-lvulkan-1',
       '-lEmpire/sdl2d',
   
       '-o',
@@ -205,7 +175,6 @@ def main(arguments):
 
   if args['mode'] == 'build':
     build(args['debug'], args['rebuild'], args['verbose'])
-
   else:
     clean()
 

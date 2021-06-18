@@ -1,12 +1,6 @@
 #ifndef MERLIN
 #define MERLIN
 
-#ifdef _WIN32
-  #define dllexport __declspec( dllexport )
-#else 
-  #define dllexport
-#endif
-
 #include <vulkan/vulkan.h>
 #include "../libs/SDL2/include/SDL.h"
 
@@ -20,19 +14,22 @@ namespace merlin {
   struct Window;
 
 
-  void dllexport init();
-  void dllexport terminate();
+  void init();
+  void terminate();
 
-  struct dllexport Engine_Init
+  struct Engine_Init
   {
     bool debug;
     gpu_type type;
   };
-  struct dllexport Engine
+  struct Engine
   {
     VkInstance instance;
     VkPhysicalDevice physical_device;
     VkDevice device;
+
+    bool debug;
+    VkDebugUtilsMessengerEXT debug_messenger;
 
     uint32_t present_index;
     uint32_t graphics_index;
@@ -44,14 +41,14 @@ namespace merlin {
     std::vector<Window*> linked_windows;
   };
 
-  struct dllexport Window_Init
+  struct Window_Init
   {
     int width;
     int height;
     std::string title;
     bool resizable;
   };
-  struct dllexport Window
+  struct Window
   {
     int width;
     int height;
@@ -82,9 +79,9 @@ namespace merlin {
     Engine* linked_engine;
   };
   
-  void dllexport jump_engine(Window_Init win_init, Window* window, Engine_Init eng_init, Engine* engine);
-  void dllexport destroy_engine(Engine engine);
-  void dllexport destory_window(Window window);
+  void jump_engine(Window_Init win_init, Window* window, Engine_Init eng_init, Engine* engine);
+  void destroy_engine(Engine engine);
+  void destory_window(Window window);
 }
 
 #endif

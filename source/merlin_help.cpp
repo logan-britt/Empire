@@ -50,27 +50,25 @@ namespace merlin {
       instance_create_info.flags = 0;
       instance_create_info.pApplicationInfo = &application_info;
 
-      uint32_t layer_count;
       std::vector<const char*> layer_names = {};
       if(debug) {
-        vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
-        std::vector<VkLayerProperties> layer_props(layer_count);
-        vkEnumerateInstanceLayerProperties(&layer_count, layer_props.data());
-        for(auto prop : layer_props) {
-          layer_names.push_back(prop.layerName);
-        }
+        layer_names = {"VK_LAYER_KHRONOS_validation"};
       }
       else {
-        layer_count = 0;
-        layer_names = {nullptr};
+        layer_names = {};
       }
-      instance_create_info.enabledLayerCount = layer_count;
+      instance_create_info.enabledLayerCount = layer_names.size();
       instance_create_info.ppEnabledLayerNames = layer_names.data();
 
       uint32_t extension_count;
       SDL_Vulkan_GetInstanceExtensions(window, &extension_count, nullptr);
       std::vector<const char*> extension_names(extension_count);
       SDL_Vulkan_GetInstanceExtensions(window, &extension_count, extension_names.data());
+      if(debug) {
+        extension_count += 1;
+        extension_names.push_back("VK_EXT_debug_utils");
+      }
+
       instance_create_info.enabledExtensionCount = extension_count;
       instance_create_info.ppEnabledExtensionNames = extension_names.data();
 

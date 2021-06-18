@@ -2,9 +2,31 @@
 #include "../include/merlin_help.hpp"
 
 #include <cstdint>
-#include <algorithm>
 #include <iostream>
+#include <algorithm>
 #include "../libs/SDL2/include/SDL_vulkan.h"
+
+VkResult create_debug_utils_messenger_EXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
+  auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+  if(func != nullptr){
+    return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+  }
+  else{
+    return VK_ERROR_EXTENSION_NOT_PRESENT;
+  }
+}
+
+void destroy_debug_utils_messenger_EXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
+  auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+  if (func != nullptr) {
+    func(instance, debugMessenger, pAllocator);
+  }
+}
+
+VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity, VkDebugUtilsMessageTypeFlagsEXT message_type, const VkDebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data) {
+  std::cerr << "validation layer: " << callback_data->pMessage << std::endl;
+  return VK_FALSE;
+}
 
 namespace merlin {
   void init() {
@@ -18,6 +40,8 @@ namespace merlin {
   }
 
   void jump_engine(Window_Init w_init, Window* window, Engine_Init e_init, Engine* engine) {
+    VkResult res;
+
     window->width = w_init.width;
     window->height = w_init.height;
     window->title = w_init.title;
@@ -29,6 +53,25 @@ namespace merlin {
       window->ptr = SDL_CreateWindow(w_init.title.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w_init.width, w_init.height, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
     }
     engine->instance = help::create_instance(window->ptr, e_init.debug);
+
+    VkDebugUtilsMessengerCreateInfoEXT debug_messenger_create_info = {};
+    debug_messenger_create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    debug_messenger_create_info.pNext = nullptr;
+    debug_messenger_create_info.flags = 0;
+    debug_messenger_create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    debug_messenger_create_info.messageType =  VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    debug_messenger_create_info.pfnUserCallback = debug_callback;
+    debug_messenger_create_info.pUserData = nullptr;
+
+    engine->debug = e_init.debug;
+    if(e_init.debug) {
+      res = create_debug_utils_messenger_EXT(engine->instance, &debug_messenger_create_info, nullptr, &engine->debug_messenger);
+      if(res != VK_SUCCESS) {
+        std::cout << res << std::endl;
+        std::cerr << "The debugger could not be created. Shutting down." << std::endl;
+        throw;
+      }
+    }
 
     if(!SDL_Vulkan_CreateSurface(window->ptr, engine->instance, &window->surface)) {
       std::cerr << "Surface Creation Faild." << std::endl;
@@ -83,7 +126,6 @@ namespace merlin {
     device_create_info.ppEnabledExtensionNames = device_extensions.data();
     device_create_info.enabledLayerCount = 0;
 
-    VkResult res;
     res = vkCreateDevice(engine->physical_device, &device_create_info, nullptr, &engine->device);
     if(res != VK_SUCCESS) {
       std::cout << res << std::endl;
@@ -218,6 +260,9 @@ namespace merlin {
   }
   void destroy_engine(Engine engine) {
     vkDestroyDevice(engine.device, nullptr);
+    if(engine.debug) {
+      destroy_debug_utils_messenger_EXT(engine.instance, engine.debug_messenger, nullptr);
+    }
     vkDestroyInstance(engine.instance, nullptr);
   }
   void destory_window(Window window) {
@@ -225,6 +270,8 @@ namespace merlin {
       for(uint32_t i=0; i<window.max_frames; i++) {
         vkDestroySemaphore(window.linked_engine->device, window.image_available_semaphores[i], nullptr);
         vkDestroySemaphore(window.linked_engine->device, window.render_finished_semaphores[i], nullptr);
+        vkDestroyFence(window.linked_engine->device, window.in_flight_fences[i], nullptr);
+        vkDestroyFence(window.linked_engine->device, window.images_in_flight[i], nullptr);
       }
 
       vkDestroySwapchainKHR(window.linked_engine->device, window.swapchain, nullptr);

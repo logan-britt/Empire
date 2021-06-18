@@ -10,8 +10,8 @@ ui::Button* ui::create_button(Button_Init init, merlin::Window* window) {
 
   merlin::Shader shader = {};
   shader.name = "main";
-  shader.vertex_path = "shaders/ui_button_vert.spv";
-  shader.fragment_path = "shaders/ui_button_frag.spv";
+  shader.vertex_path = "D:/projects/Empire/Empire/shaders/ui_button_vert.spv";
+  shader.fragment_path = "D:/projects/Empire/Empire/shaders/ui_button_frag.spv";
   shader.geometry = false;
 
   merlin::Input input = {};
@@ -19,7 +19,7 @@ ui::Button* ui::create_button(Button_Init init, merlin::Window* window) {
 
   merlin::Fixed_Functions fixed_functions = {};
   fixed_functions.reuse = false;
-  fixed_functions.topology = merlin::TRIANGLE_STRIP;
+  fixed_functions.topology = merlin::TRIANGLE_LIST;
   fixed_functions.mode = merlin::FILL;
   fixed_functions.line_width = 1.0f;
 
