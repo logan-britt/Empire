@@ -25,6 +25,7 @@ void destroy_debug_utils_messenger_EXT(VkInstance instance, VkDebugUtilsMessenge
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity, VkDebugUtilsMessageTypeFlagsEXT message_type, const VkDebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data) {
   std::cerr << "validation layer: " << callback_data->pMessage << std::endl;
+  std::cout << std::endl;
   return VK_FALSE;
 }
 
@@ -58,7 +59,7 @@ namespace merlin {
     debug_messenger_create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     debug_messenger_create_info.pNext = nullptr;
     debug_messenger_create_info.flags = 0;
-    debug_messenger_create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    debug_messenger_create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
     debug_messenger_create_info.messageType =  VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
     debug_messenger_create_info.pfnUserCallback = debug_callback;
     debug_messenger_create_info.pUserData = nullptr;
@@ -105,11 +106,13 @@ namespace merlin {
     help::find_indecies(&engine->present_index, &engine->graphics_index, &engine->transfer_index, window->surface, engine->physical_device);
 
     std::vector<VkDeviceQueueCreateInfo> queue_infos = help::create_queue_infos(engine->present_index, engine->graphics_index, engine->transfer_index);
+    
     VkPhysicalDeviceFeatures features = {};
     features.fillModeNonSolid = true;
     features.geometryShader = true;
     features.tessellationShader = true;
     features.wideLines = true;
+    
     std::vector<const char*> device_extensions = {
       VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
       VK_KHR_SWAPCHAIN_EXTENSION_NAME
@@ -220,12 +223,25 @@ namespace merlin {
     binary_create_info.pNext = nullptr;
     binary_create_info.flags = 0;
 
-    VkFenceCreateInfo fence_info = {};
-    fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    VkSemaphoreTypeCreateInfoKHR timeline_info = {};
+    timeline_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO_KHR;
+    timeline_info.pNext = nullptr;
+    timeline_info.initialValue = 0;
+    timeline_info.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
 
+    VkSemaphoreCreateInfo timeline_create_info = {};
+    timeline_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    timeline_create_info.pNext = &timeline_info;
+    timeline_create_info.flags = 0;
+
+    VkFenceCreateInfo fence_create_info = {};
+    fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fence_create_info.pNext = nullptr;
+    fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    window->render_counts.resize(window->max_frames, 0);
     window->in_flight_fences.resize(window->max_frames);
-    window->images_in_flight.resize(window->max_frames);
+    window->images_in_flight.resize(window->image_count, VK_NULL_HANDLE);
     window->render_finished_semaphores.resize(window->max_frames);
     window->image_available_semaphores.resize(window->max_frames);
     for(uint32_t i=0; i<window->max_frames; i++) {
@@ -236,17 +252,17 @@ namespace merlin {
         throw;
       }
 
-      res = vkCreateSemaphore(engine->device, &binary_create_info, nullptr, &window->render_finished_semaphores[i]);
+      res = vkCreateSemaphore(engine->device, &timeline_create_info, nullptr, &window->render_finished_semaphores[i]);
       if(res != VK_SUCCESS) {
         std::cout << res << std::endl;
         std::cerr << "The semaphore could not be created. Shutting down." << std::endl;
         throw;
       }
 
-      res = vkCreateFence(engine->device, &fence_info, nullptr, &window->in_flight_fences[i]);
+      res = vkCreateFence(engine->device, &fence_create_info, nullptr, &window->in_flight_fences[i]);
       if(res != VK_SUCCESS) {
         std::cout << res << std::endl;
-        std::cerr << "The fence could not be created. Shutting Down." << std::endl;
+        std::cerr << "The fence could not be created. Shutting down." << std::endl;
         throw;
       }
     }
@@ -270,8 +286,8 @@ namespace merlin {
       for(uint32_t i=0; i<window.max_frames; i++) {
         vkDestroySemaphore(window.linked_engine->device, window.image_available_semaphores[i], nullptr);
         vkDestroySemaphore(window.linked_engine->device, window.render_finished_semaphores[i], nullptr);
+
         vkDestroyFence(window.linked_engine->device, window.in_flight_fences[i], nullptr);
-        vkDestroyFence(window.linked_engine->device, window.images_in_flight[i], nullptr);
       }
 
       vkDestroySwapchainKHR(window.linked_engine->device, window.swapchain, nullptr);

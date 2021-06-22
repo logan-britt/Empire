@@ -70,6 +70,7 @@ namespace merlin {
     uint32_t max_frames;
     uint32_t current_frame;
 
+    std::vector<uint64_t> render_counts;
     std::vector<VkFence> in_flight_fences;
     std::vector<VkFence> images_in_flight;
     std::vector<VkSemaphore> image_available_semaphores;

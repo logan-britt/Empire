@@ -42,7 +42,7 @@ namespace merlin {
       VkApplicationInfo application_info = {};
       application_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
       application_info.pNext = nullptr;
-      application_info.apiVersion = VK_MAKE_VERSION(1, 2, 0);
+      application_info.apiVersion = VK_API_VERSION_1_2;
     
       VkInstanceCreateInfo instance_create_info = {};
       instance_create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;

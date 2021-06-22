@@ -251,7 +251,6 @@ namespace merlin {
 
     VkPipelineMultisampleStateCreateInfo multisample = {};
     if(state_init.multisampling.enable) {
-      
     }
     else {
       multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
@@ -320,66 +319,65 @@ namespace merlin {
       );
     }
 
+    std::vector<VkAttachmentReference> depth_stencil_refrences(state_init.render_pass.subpasses.size());
+    std::vector<std::vector<VkAttachmentReference>> color_refrences(state_init.render_pass.subpasses.size());
+    std::vector<std::vector<VkAttachmentReference>> input_refrences(state_init.render_pass.subpasses.size());
+    std::vector<std::vector<uint32_t>> preserve_refrences(state_init.render_pass.subpasses.size());
+    std::vector<std::vector<VkAttachmentReference>> resolve_refrences(state_init.render_pass.subpasses.size());
     std::vector<VkSubpassDescription> subpasses(state_init.render_pass.subpasses.size());
     for(uint32_t i=0; i<subpasses.size(); i++) {
       Subpass subpass_init = state_init.render_pass.subpasses[i];
 
-      VkAttachmentReference depth_stencil_refrence = {};
       if(subpass_init.depth_stencil) {
-        VkAttachmentReference reference = {};
-        reference.attachment = (uint32_t)subpass_init.depth_stencil_attachment;
-        reference.layout = help::choose_layout(state_init.render_pass.attachments[subpass_init.depth_stencil_attachment]._layouts);
-
-        depth_stencil_refrence = reference;
+        depth_stencil_refrences[i].attachment = (uint32_t)subpass_init.depth_stencil_attachment;
+        depth_stencil_refrences[i].layout = help::choose_layout(state_init.render_pass.attachments[subpass_init.depth_stencil_attachment]._layouts);
       }
-      std::vector<VkAttachmentReference> color_refrences = {};
-      for(uint32_t j=0; j<color_refrences.size(); j++) {
-        VkAttachmentReference reference = {};
-        reference.attachment = (uint32_t)subpass_init.color_attachments[j];
-        reference.layout = help::choose_layout(state_init.render_pass.attachments[subpass_init.color_attachments[j]]._layouts);
-
-        color_refrences.push_back(reference);
+      color_refrences[i].resize(subpass_init.color_attachments.size());
+      for(uint32_t j=0; j<color_refrences[i].size(); j++) {
+        color_refrences[i][j].attachment = (uint32_t)subpass_init.color_attachments[j];
+        color_refrences[i][j].layout = help::choose_layout(state_init.render_pass.attachments[subpass_init.color_attachments[j]]._layouts);
       }
-      std::vector<VkAttachmentReference> input_refrences = {};
-      for(uint32_t j=0; j<input_refrences.size(); j++) {
-        VkAttachmentReference reference = {};
-        reference.attachment = (uint32_t)subpass_init.input_attachments[j];
-        reference.layout = help::choose_layout(state_init.render_pass.attachments[subpass_init.input_attachments[j]]._layouts);
-
-        input_refrences.push_back(reference);
+      input_refrences[i].resize(subpass_init.input_attachments.size());
+      for(uint32_t j=0; j<input_refrences[i].size(); j++) {
+        input_refrences[i][j].attachment = (uint32_t)subpass_init.input_attachments[j];
+        input_refrences[i][j].layout = help::choose_layout(state_init.render_pass.attachments[subpass_init.input_attachments[j]]._layouts);
       }
-      std::vector<uint32_t> preserve_refrences = {};
-      for(uint32_t j=0; j<preserve_refrences.size(); j++) {
-        preserve_refrences.push_back((uint32_t)subpass_init.preserve_attachments[j]);
+      preserve_refrences[i].resize(subpass_init.preserve_attachments.size());
+      for(uint32_t j=0; j<preserve_refrences[i].size(); j++) {
+        preserve_refrences[i][j] = (uint32_t)subpass_init.preserve_attachments[j];
       }
-      std::vector<VkAttachmentReference> resolve_refrences = {};
-      for(uint32_t j=0; j<resolve_refrences.size(); j++) {
-        VkAttachmentReference reference = {};
-        reference.attachment = (uint32_t)subpass_init.resolve_attachments[j];
-        reference.layout = help::choose_layout(state_init.render_pass.attachments[subpass_init.resolve_attachments[j]]._layouts);
-
-        resolve_refrences.push_back(reference);
+      resolve_refrences[i].resize(subpass_init.resolve_attachments.size());
+      for(uint32_t j=0; j<resolve_refrences[i].size(); j++) {
+        resolve_refrences[i][j].attachment = (uint32_t)subpass_init.resolve_attachments[j];
+        resolve_refrences[i][j].layout = help::choose_layout(state_init.render_pass.attachments[subpass_init.resolve_attachments[j]]._layouts);
       }
 
-      VkSubpassDescription subpass = {};
-      subpass.flags = 0;
+      subpasses[i].flags = 0;
       switch(subpass_init.point)
       {
         case GRAPHICS:
-          subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+          subpasses[i].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
           break;
       }
-      subpass.colorAttachmentCount = color_refrences.size();
-      subpass.pColorAttachments = color_refrences.data();
-      subpass.inputAttachmentCount = input_refrences.size();
-      subpass.pInputAttachments = input_refrences.data();
-      subpass.pPreserveAttachments = preserve_refrences.data();
-      subpass.pResolveAttachments = resolve_refrences.data();
-      subpasses[i] = subpass;
+      subpasses[i].colorAttachmentCount = color_refrences[i].size();
+      subpasses[i].pColorAttachments = color_refrences[i].data();
+      subpasses[i].inputAttachmentCount = input_refrences[i].size();
+      subpasses[i].pInputAttachments = input_refrences[i].data();
+      subpasses[i].preserveAttachmentCount = preserve_refrences[i].size();
+      subpasses[i].pPreserveAttachments = preserve_refrences[i].data();
+      subpasses[i].pResolveAttachments = resolve_refrences[i].data();
+      if(subpass_init.depth_stencil) {
+        subpasses[i].pDepthStencilAttachment = &depth_stencil_refrences[i];
+      }
     }
 
     std::vector<VkSubpassDependency> dependencies = {}; // implement dependencies later
-    for(uint32_t i=0; i<dependencies.size(); i++) {
+    for(uint32_t i=0; i<state_init.render_pass.dependencies.size(); i++) {
+      Dependency dependency = state_init.render_pass.dependencies[i];
+
+      VkSubpassDependency subpass_dependency = {};
+
+      dependencies.push_back(subpass_dependency);
     }
     VkSubpassDependency render_dependency = {}; // fix for more than one subpass
     render_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -577,57 +575,67 @@ namespace merlin {
   }
 
   void subdraw(std::vector<Graph*> graphs, Window* window, Engine* engine) {
-    VkResult res;
     vkWaitForFences(engine->device, 1, &window->in_flight_fences[window->current_frame], VK_TRUE, UINT64_MAX);
 
     uint32_t image_index;
     vkAcquireNextImageKHR(engine->device, window->swapchain, UINT64_MAX, window->image_available_semaphores[window->current_frame], VK_NULL_HANDLE, &image_index);
-    if (window->images_in_flight[image_index] != VK_NULL_HANDLE) {
+
+    if(window->images_in_flight[image_index] != VK_NULL_HANDLE) {
       vkWaitForFences(engine->device, 1, &window->images_in_flight[image_index], VK_TRUE, UINT64_MAX);
     }
     window->images_in_flight[image_index] = window->in_flight_fences[window->current_frame];
-
+    
     std::vector<VkSubmitInfo> submit_infos(graphs.size());
+    VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+
+    uint64_t wait_value;
+    uint64_t signal_value = 1;
+    VkTimelineSemaphoreSubmitInfo signal_info = {};
+    signal_info.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+    signal_info.pNext = nullptr;
+    signal_info.waitSemaphoreValueCount = 0;
+    signal_info.pWaitSemaphoreValues = nullptr;
+    signal_info.signalSemaphoreValueCount = 1;
+    signal_info.pSignalSemaphoreValues = &signal_value;
+
     for(uint32_t i=0; i<submit_infos.size(); i++) {
-      VkSubmitInfo submit_info = {};
-      submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-      VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-      submit_info.waitSemaphoreCount = 1;
-      submit_info.pWaitSemaphores = &window->image_available_semaphores[window->current_frame];
-      submit_info.pWaitDstStageMask = wait_stages;
-
-      submit_info.commandBufferCount = 1;
-      submit_info.pCommandBuffers = &graphs[i]->active_state->draw_buffers[image_index];
-
-      submit_info.signalSemaphoreCount = 1;
-      submit_info.pSignalSemaphores = &window->render_finished_semaphores[window->current_frame];
-
-      submit_infos[i] = submit_info;
+      submit_infos[i].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+      submit_infos[i].pNext = &signal_info;
+      submit_infos[i].waitSemaphoreCount = 1;
+      submit_infos[i].pWaitSemaphores = &window->image_available_semaphores[window->current_frame];
+      submit_infos[i].pWaitDstStageMask = wait_stages;
+      submit_infos[i].commandBufferCount = 1;
+      submit_infos[i].pCommandBuffers = &graphs[i]->active_state->draw_buffers[image_index];
+      submit_infos[i].signalSemaphoreCount = 1;
+      submit_infos[i].pSignalSemaphores = &window->render_finished_semaphores[window->current_frame];
     }
 
     vkResetFences(engine->device, 1, &window->in_flight_fences[window->current_frame]);
-    res = vkQueueSubmit(engine->graphics_queue, submit_infos.size(), submit_infos.data(), window->in_flight_fences[window->current_frame]);
-    if(res != VK_SUCCESS) {
-      throw;
+    if (vkQueueSubmit(engine->graphics_queue, submit_infos.size(), submit_infos.data(), window->in_flight_fences[window->current_frame]) != VK_SUCCESS) {
+      throw std::runtime_error("failed to submit draw command buffer!");
     }
 
-    VkPresentInfoKHR present_info = {};
-    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    present_info.pNext = nullptr;
-    present_info.waitSemaphoreCount = 1;
-    present_info.pWaitSemaphores = &window->render_finished_semaphores[window->current_frame];
-    present_info.swapchainCount = 1;
-    present_info.pSwapchains = &window->swapchain;
-    present_info.pImageIndices = &image_index;
+    wait_value = (uint64_t)graphs.size();
+    VkTimelineSemaphoreSubmitInfo wait_info = {};
+    wait_info.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+    wait_info.pNext = nullptr;
+    wait_info.waitSemaphoreValueCount = 1;
+    wait_info.pWaitSemaphoreValues = &wait_value;
+    wait_info.signalSemaphoreValueCount = 0;
+    wait_info.pSignalSemaphoreValues = nullptr;
 
-    res = vkQueuePresentKHR(engine->present_queue, &present_info);
-    if(res != VK_SUCCESS) {
-      std::cout << res << std::endl;
-      std::cerr << "The present operation seems to have faild. Shutting Down." << std::endl;
-      throw;
-    }
+    VkPresentInfoKHR presentInfo{};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.pNext = &wait_info;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &window->render_finished_semaphores[window->current_frame];
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &window->swapchain;
+    presentInfo.pImageIndices = &image_index;
 
+    vkQueuePresentKHR(engine->present_queue, &presentInfo);
+
+    window->render_counts[window->current_frame] += (uint64_t)graphs.size();
     window->current_frame = (window->current_frame + 1) % window->max_frames;
   }
 
