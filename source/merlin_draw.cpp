@@ -108,6 +108,8 @@ namespace merlin {
   }
   void destroy_graph(Graph graph) {
     VkDevice device = graph.linked_window->linked_engine->device;
+    vkDeviceWaitIdle(device);
+
     for(auto view : graph.views) {
       vkDestroyImageView(device, view, nullptr);
     }

@@ -283,6 +283,7 @@ namespace merlin {
   }
   void destory_window(Window window) {
     if(!window.destroyed) {
+      vkDeviceWaitIdle(window.linked_engine->device);
       for(uint32_t i=0; i<window.max_frames; i++) {
         vkDestroySemaphore(window.linked_engine->device, window.image_available_semaphores[i], nullptr);
         vkDestroySemaphore(window.linked_engine->device, window.render_finished_semaphores[i], nullptr);
