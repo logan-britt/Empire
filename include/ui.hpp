@@ -4,6 +4,7 @@
 #include "../include/merlin.hpp"
 #include "../include/merlin_draw.hpp"
 
+#include <array>
 #include <vector>
 #include <string>
 
@@ -14,12 +15,24 @@ namespace ui
     std::string text;
     float x, y;
     float width, height;
+
+    std::array<float, 3> color_normal;
+    std::array<float, 3> color_heighlight;
+    std::array<float, 3> color_gray;
   };
   struct Button
   {
     float x, y;
     float width, height;
     std::string title;
+
+    std::array<float, 3> color_normal;
+    std::array<float, 3> color_heighlight;
+    std::array<float, 3> color_gray;
+
+    std::vector<float> verticies;
+    std::vector<int> indecies;
+
     merlin::Graph render_graph;
   };
 

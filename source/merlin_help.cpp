@@ -480,6 +480,10 @@ namespace merlin {
           attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
           attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
           break;
+        case PRESENT:
+          attachment.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+          attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+          break;
       }
       return attachment;
     }

@@ -8,14 +8,48 @@ ui::Button* ui::create_button(Button_Init init, merlin::Window* window) {
   button->height = init.height;
   button->title = init.text;
 
+  button->verticies = {
+    button->x,                 button->y,
+    button->x + button->width, button->y,
+    button->x,                 button->y + button->height,
+    button->x + button->width, button->y + button->height
+  };
+  button->indecies = {
+    0, 1, 2,
+    1, 3, 2
+  };
+
+  button->color_normal = init.color_normal;
+  button->color_heighlight = init.color_heighlight;
+  button->color_gray = init.color_gray;
+
   merlin::Shader shader = {};
   shader.name = "main";
   shader.vertex_path = "D:/projects/Empire/Empire/shaders/ui_button_vert.spv";
   shader.fragment_path = "D:/projects/Empire/Empire/shaders/ui_button_frag.spv";
   shader.geometry = false;
 
+  merlin::Input_Binding binding;
+  binding.binding = 0;
+  binding.stride = sizeof(float)*5;
+  binding.rate = merlin::RATE_VERTEX;
+
+  merlin::Input_Attribute attribute_0;
+  attribute_0.binding = 0;
+  attribute_0.location = 0;
+  attribute_0.loc_format = merlin::FVEC2;
+  attribute_0.offset = 0;
+
+  merlin::Input_Attribute attribute_1;
+  attribute_1.binding = 0;
+  attribute_1.location = 1;
+  attribute_1.loc_format = merlin::FVEC3;
+  attribute_1.offset = sizeof(float)*2;
+
   merlin::Input input = {};
-  input.input_data = false;
+  input.input_data = true;
+  input.bindings = {binding};
+  input.attributes = {attribute_0, attribute_1};
 
   merlin::Fixed_Functions fixed_functions = {};
   fixed_functions.reuse = false;
@@ -31,9 +65,9 @@ ui::Button* ui::create_button(Button_Init init, merlin::Window* window) {
 
   merlin::Attachment attachment = {};
   attachment.sample_count = 1;
-  attachment.data_ops = merlin::CLEAR_STORE;
+  attachment.data_ops = merlin::LOAD_STORE;
   attachment.stencil_ops = merlin::DONT_CARE;
-  attachment._layouts = merlin::UNDEFINED_PRESENT;
+  attachment._layouts = merlin::PRESENT;
 
   merlin::Subpass subpass = {};
   subpass.point = merlin::GRAPHICS;
@@ -44,19 +78,19 @@ ui::Button* ui::create_button(Button_Init init, merlin::Window* window) {
   render_pass.subpasses = {subpass};
   render_pass.dependencies = {};
 
-  merlin::State_Init state_init = {};
-  state_init.id = 1;
-  state_init.shader = shader;
-  state_init.input = input;
-  state_init.fixed_functions = fixed_functions;
-  state_init.multisampling = multisampling;
-  state_init.uniform = uniform;
-  state_init.render_pass = render_pass;
+  merlin::State_Init main_state_init = {};
+  main_state_init.id = 1;
+  main_state_init.shader = shader;
+  main_state_init.input = input;
+  main_state_init.fixed_functions = fixed_functions;
+  main_state_init.multisampling = multisampling;
+  main_state_init.uniform = uniform;
+  main_state_init.render_pass = render_pass;
 
   merlin::Graph_Init graph_init = {};
   graph_init.activated = false;
   graph_init.loaded = {};
-  graph_init.unloaded = {state_init};
+  graph_init.unloaded = {main_state_init};
 
   button->render_graph = merlin::create_graph(graph_init, window);
   return button;

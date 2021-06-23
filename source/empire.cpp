@@ -51,7 +51,7 @@ int main() {
   /* --- set up the simulation engine --- */
   merlin::init();
   merlin::Engine_Init e_init = {true, DISCRETE};
-  merlin::Window_Init w_init = {1280, 720, "Empire", true};
+  merlin::Window_Init w_init = {1280, 720, "Empire", false};
   merlin::jump_engine(w_init, &window, e_init, &g_engine);
 
   game_quit = false;

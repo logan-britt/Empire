@@ -12,6 +12,7 @@ namespace merlin {
     VkDevice device = window->linked_engine->device;
 
     graph.linked = true;
+    graph.id = init.id;
     graph.linked_window = window;
 
     // create the image views for rendering
@@ -188,8 +189,67 @@ namespace merlin {
       shader_stage_infos.push_back(geometry_stage_info);
     }
 
+    std::vector<VkVertexInputBindingDescription> bindings;
+    std::vector<VkVertexInputAttributeDescription> attributes;
+
     VkPipelineVertexInputStateCreateInfo vertex_input_info = {};
     if(state_init.input.input_data) {
+      bindings.resize(state_init.input.bindings.size());
+      for(uint32_t i=0; i<bindings.size(); i++) {
+        bindings[i].binding = state_init.input.bindings[i].binding;
+        bindings[i].stride = state_init.input.bindings[i].stride;
+        switch(state_init.input.bindings[i].rate)
+        {
+          case RATE_VERTEX:
+            bindings[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+            break;
+          case RATE_INTANCE:
+            bindings[i].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+            break;
+        }
+      }
+
+      attributes.resize(state_init.input.attributes.size());
+      for(uint32_t i=0; i<attributes.size(); i++) {
+        attributes[i].binding = state_init.input.attributes[i].binding;
+        attributes[i].location = state_init.input.attributes[i].location;
+        switch(state_init.input.attributes[i].loc_format)
+        {
+          case FVEC1:
+            attributes[i].format = VK_FORMAT_R32_SFLOAT;
+            break;
+          case FVEC2:
+            attributes[i].format = VK_FORMAT_R32G32_SFLOAT;
+            break;
+          case FVEC3:
+            attributes[i].format = VK_FORMAT_R32G32B32_SFLOAT;
+            break;
+          case FVEC4:
+            attributes[i].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+            break;
+          case DVEC1:
+            attributes[i].format = VK_FORMAT_R64_SFLOAT;
+            break;
+          case DVEC2:
+            attributes[i].format = VK_FORMAT_R64G64_SFLOAT;
+            break;
+          case DVEC3:
+            attributes[i].format = VK_FORMAT_R64G64B64_SFLOAT;
+            break;
+          case DVEC4:
+            attributes[i].format = VK_FORMAT_R64G64B64A64_SFLOAT;
+            break;
+        }
+        attributes[i].offset = state_init.input.attributes[i].offset;
+      }
+
+      vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+      vertex_input_info.pNext = nullptr;
+      vertex_input_info.flags = 0;
+      vertex_input_info.vertexBindingDescriptionCount = bindings.size();
+      vertex_input_info.pVertexBindingDescriptions = bindings.data();
+      vertex_input_info.vertexAttributeDescriptionCount = attributes.size();
+      vertex_input_info.pVertexAttributeDescriptions = attributes.data();
     }
     else {
       vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;

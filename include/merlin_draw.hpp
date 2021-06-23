@@ -12,8 +12,10 @@ namespace merlin {
   enum input_topology{POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP, TRIANGLE_FAN};
   enum polygon_mode{FILL, LINE, POINT};
   enum ops{LOAD_STORE, LOAD_DONT_CARE, CLEAR_STORE, CLEAR_DONT_CARE, DONT_CARE_STORE, DONT_CARE};
-  enum layouts{UNDEFINED_PRESENT};
+  enum layouts{UNDEFINED_PRESENT, PRESENT};
   enum bind_point{GRAPHICS};
+  enum input_rate{RATE_VERTEX, RATE_INTANCE};
+  enum loacation_format{FVEC1, FVEC2, FVEC3, FVEC4, DVEC1, DVEC2, DVEC3, DVEC4};
 
   struct Shader
   {
@@ -23,9 +25,25 @@ namespace merlin {
     bool geometry;
     std::string geometry_path;
   };
+
+  struct Input_Binding
+  {
+    int binding;
+    size_t stride;
+    input_rate rate;
+  };
+  struct Input_Attribute
+  {
+    int binding;
+    int location;
+    loacation_format loc_format;
+    size_t offset;
+  };
   struct Input
   {
     bool input_data;
+    std::vector<Input_Binding> bindings;
+    std::vector<Input_Attribute> attributes;
   };
   struct Fixed_Functions
   {
@@ -68,7 +86,6 @@ namespace merlin {
     std::vector<Attachment> attachments;
     std::vector<Subpass> subpasses;
     std::vector<Dependency> dependencies;
-
   };
 
   struct State_Init
@@ -94,6 +111,11 @@ namespace merlin {
     VkPipelineLayout pipeline_layout;
     VkRenderPass render_pass;
 
+    VkBuffer transfer_buffer;
+    std::vector<VkBuffer> vertex_buffer;
+    std::vector<VkBuffer> index_buffer;
+    std::vector<VkBuffer> uniform_buffer;
+
     std::vector<VkFramebuffer> framebuffers;
     std::vector<VkCommandBuffer> draw_buffers;
   };
@@ -101,6 +123,7 @@ namespace merlin {
 
   struct Graph_Init
   {
+    int id;
     bool activated = false;
     State_Init active;
     std::vector<State_Init> loaded;
@@ -109,6 +132,8 @@ namespace merlin {
 
   struct Graph
   {
+    int id;
+
     std::vector<VkImageView> views;
     VkCommandPool draw_pool;
     VkCommandPool transfer_pool;
