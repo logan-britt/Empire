@@ -24,8 +24,8 @@ void destroy_debug_utils_messenger_EXT(VkInstance instance, VkDebugUtilsMessenge
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity, VkDebugUtilsMessageTypeFlagsEXT message_type, const VkDebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data) {
-  std::cerr << "validation layer: " << callback_data->pMessage << std::endl;
-  std::cout << std::endl;
+  //std::cerr << "validation layer: " << callback_data->pMessage << std::endl;
+  //std::cout << std::endl;
   return VK_FALSE;
 }
 
@@ -218,28 +218,22 @@ namespace merlin {
     window->max_frames = 3;
     window->current_frame = 0;
 
+    VkSemaphoreTypeCreateInfoKHR binary_info = {};
+    binary_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO_KHR;
+    binary_info.pNext = nullptr;
+    binary_info.initialValue = 0;
+    binary_info.semaphoreType = VK_SEMAPHORE_TYPE_BINARY;
+
     VkSemaphoreCreateInfo binary_create_info = {};
     binary_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    binary_create_info.pNext = nullptr;
+    binary_create_info.pNext = &binary_info;
     binary_create_info.flags = 0;
-
-    VkSemaphoreTypeCreateInfoKHR timeline_info = {};
-    timeline_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO_KHR;
-    timeline_info.pNext = nullptr;
-    timeline_info.initialValue = 0;
-    timeline_info.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
-
-    VkSemaphoreCreateInfo timeline_create_info = {};
-    timeline_create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    timeline_create_info.pNext = &timeline_info;
-    timeline_create_info.flags = 0;
 
     VkFenceCreateInfo fence_create_info = {};
     fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fence_create_info.pNext = nullptr;
     fence_create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    window->render_counts.resize(window->max_frames, 0);
     window->in_flight_fences.resize(window->max_frames);
     window->images_in_flight.resize(window->image_count, VK_NULL_HANDLE);
     window->render_finished_semaphores.resize(window->max_frames);
@@ -252,7 +246,7 @@ namespace merlin {
         throw;
       }
 
-      res = vkCreateSemaphore(engine->device, &timeline_create_info, nullptr, &window->render_finished_semaphores[i]);
+      res = vkCreateSemaphore(engine->device, &binary_create_info, nullptr, &window->render_finished_semaphores[i]);
       if(res != VK_SUCCESS) {
         std::cout << res << std::endl;
         std::cerr << "The semaphore could not be created. Shutting down." << std::endl;
@@ -297,4 +291,6 @@ namespace merlin {
       window.destroyed = true;
     }
   }
+
+  
 }

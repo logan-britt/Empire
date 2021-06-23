@@ -190,7 +190,6 @@ namespace merlin {
 
     VkPipelineVertexInputStateCreateInfo vertex_input_info = {};
     if(state_init.input.input_data) {
-
     }
     else {
       vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -577,6 +576,7 @@ namespace merlin {
   }
 
   void subdraw(std::vector<Graph*> graphs, Window* window, Engine* engine) {
+    VkResult res;
     vkWaitForFences(engine->device, 1, &window->in_flight_fences[window->current_frame], VK_TRUE, UINT64_MAX);
 
     uint32_t image_index;
@@ -586,26 +586,16 @@ namespace merlin {
       vkWaitForFences(engine->device, 1, &window->images_in_flight[image_index], VK_TRUE, UINT64_MAX);
     }
     window->images_in_flight[image_index] = window->in_flight_fences[window->current_frame];
-    
+
     std::vector<VkSubmitInfo> submit_infos(graphs.size());
-    VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-
-    uint64_t wait_value;
-    uint64_t signal_value = 1;
-    VkTimelineSemaphoreSubmitInfo signal_info = {};
-    signal_info.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
-    signal_info.pNext = nullptr;
-    signal_info.waitSemaphoreValueCount = 0;
-    signal_info.pWaitSemaphoreValues = nullptr;
-    signal_info.signalSemaphoreValueCount = 1;
-    signal_info.pSignalSemaphoreValues = &signal_value;
-
-    for(uint32_t i=0; i<submit_infos.size(); i++) {
+    for(uint32_t i=0; i<graphs.size(); i++) {
       submit_infos[i].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-      submit_infos[i].pNext = &signal_info;
+      submit_infos[i].pNext = nullptr;
+
+      VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
       submit_infos[i].waitSemaphoreCount = 1;
       submit_infos[i].pWaitSemaphores = &window->image_available_semaphores[window->current_frame];
-      submit_infos[i].pWaitDstStageMask = wait_stages;
+      submit_infos[i].pWaitDstStageMask = waitStages;
       submit_infos[i].commandBufferCount = 1;
       submit_infos[i].pCommandBuffers = &graphs[i]->active_state->draw_buffers[image_index];
       submit_infos[i].signalSemaphoreCount = 1;
@@ -613,31 +603,23 @@ namespace merlin {
     }
 
     vkResetFences(engine->device, 1, &window->in_flight_fences[window->current_frame]);
-    if (vkQueueSubmit(engine->graphics_queue, submit_infos.size(), submit_infos.data(), window->in_flight_fences[window->current_frame]) != VK_SUCCESS) {
+
+    res = vkQueueSubmit(engine->graphics_queue, submit_infos.size(), submit_infos.data(), window->in_flight_fences[window->current_frame]);
+    if(res != VK_SUCCESS) {
       throw std::runtime_error("failed to submit draw command buffer!");
     }
 
-    wait_value = (uint64_t)graphs.size();
-    VkTimelineSemaphoreSubmitInfo wait_info = {};
-    wait_info.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
-    wait_info.pNext = nullptr;
-    wait_info.waitSemaphoreValueCount = 1;
-    wait_info.pWaitSemaphoreValues = &wait_value;
-    wait_info.signalSemaphoreValueCount = 0;
-    wait_info.pSignalSemaphoreValues = nullptr;
+    VkPresentInfoKHR present_info = {};
+    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    present_info.pNext = nullptr;
+    present_info.waitSemaphoreCount = 1;
+    present_info.pWaitSemaphores = &window->render_finished_semaphores[window->current_frame];
+    present_info.swapchainCount = 1;
+    present_info.pSwapchains = &window->swapchain;
+    present_info.pImageIndices = &image_index;
 
-    VkPresentInfoKHR presentInfo{};
-    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    presentInfo.pNext = &wait_info;
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &window->render_finished_semaphores[window->current_frame];
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = &window->swapchain;
-    presentInfo.pImageIndices = &image_index;
+    vkQueuePresentKHR(engine->present_queue, &present_info);
 
-    vkQueuePresentKHR(engine->present_queue, &presentInfo);
-
-    window->render_counts[window->current_frame] += (uint64_t)graphs.size();
     window->current_frame = (window->current_frame + 1) % window->max_frames;
   }
 
