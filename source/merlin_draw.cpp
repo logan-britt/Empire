@@ -1,6 +1,9 @@
 #include "../include/merlin_draw.hpp"
 #include "../include/merlin_help.hpp"
 
+#define VMA_IMPLEMENTATION
+#include "../include/vk_mem_alloc.h"
+
 #include <map>
 #include <thread>
 #include <iostream>
@@ -494,6 +497,29 @@ namespace merlin {
       throw;
     }
 
+    state.vertex_buffers.resize(state_init.input.bindings.size());
+    state.index_buffers.resize(state_init.input.bindings.size());
+    for(uint32_t i=0; i<state.vertex_buffers.size(); i++) {
+      size_t instance_count = state_init.input.instance_count;
+      size_t vertex_count = state_init.input.vertex_count;
+      size_t binding_size = state_init.input.bindings[i].stride;
+
+      VkBufferCreateInfo vertex_buffer_create_info = {};
+      vertex_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+      vertex_buffer_create_info.pNext = nullptr;
+      vertex_buffer_create_info.flags = 0;
+      vertex_buffer_create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+      vertex_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+      vertex_buffer_create_info.size = instance_count*vertex_count*binding_size;
+
+      res = vkCreateBuffer(graph->linked_window->linked_engine->device, &vertex_buffer_create_info, nullptr, &state.vertex_buffers[i]);
+      if(res != VK_SUCCESS) {
+        std::cout << res << std::endl;
+        std::cerr << "A vertex buffer could not be created. Shutting Down." << std::endl;
+        throw;
+      }
+    }
+
     state.framebuffers.resize(graph->views.size());
     for(uint32_t i=0; i<state.framebuffers.size(); i++) {
       VkFramebufferCreateInfo framebuffer_create_info = {};
@@ -560,7 +586,7 @@ namespace merlin {
 
         vkCmdBindPipeline(state.draw_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, state.pipeline);
 
-        vkCmdDraw(state.draw_buffers[i], 3, 1, 0, 0);
+        vkCmdDraw(state.draw_buffers[i], state_init.input.vertex_count, state_init.input.instance_count, 0, 0);
 
       vkCmdEndRenderPass(state.draw_buffers[i]);
 
@@ -601,6 +627,10 @@ namespace merlin {
     vkDestroyShaderModule(device, state.fragment_module, nullptr);
     if(state.geometry) {
       vkDestroyShaderModule(device, state.geometry_module, nullptr);
+    }
+
+    for(uint32_t i=0; i<state.vertex_buffers.size(); i++) {
+      vkDestroyBuffer(device, state.vertex_buffers[i], nullptr);
     }
 
     for(auto framebuffer : state.framebuffers) {

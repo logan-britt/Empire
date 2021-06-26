@@ -108,7 +108,6 @@ int main() {
     ui::destroy_button(button);
   }
 
-  merlin::destory_window(window);
   merlin::destroy_engine(g_engine);
   merlin::terminate();
   return 0;
@@ -164,6 +163,10 @@ void load_main_menu() {
   /* --- set the simulation state to main menu --- */
   simulation_major_state = MAIN_MENU;
 
+  std::array<float, 3> color_normal = {0.1f, 0.1f, 1.0f};
+  std::array<float, 3> color_heighlight = {0.1f, 0.55f, 1.0f};
+  std::array<float, 3> color_gray = {0.0f, 0.0f, 0.0f};
+
   float window_height = (float)window.height;
   float window_width = (float)window.width;
 
@@ -179,6 +182,9 @@ void load_main_menu() {
   world_create_init.width = button_width;
   world_create_init.height = button_height;
   world_create_init.text = "Create World";
+  world_create_init.color_normal = color_normal;
+  world_create_init.color_heighlight = color_heighlight;
+  world_create_init.color_gray = color_gray;
 
   ui::Button* world_create_button = ui::create_button(world_create_init, &window);
   ui::activate_graphics(world_create_button);
@@ -191,6 +197,9 @@ void load_main_menu() {
   start_simulation_init.width = button_width;
   start_simulation_init.height = button_height;
   start_simulation_init.text = "Start Simulation";
+  start_simulation_init.color_normal = color_normal;
+  start_simulation_init.color_heighlight = color_heighlight;
+  start_simulation_init.color_gray = color_gray;
 
   ui::Button* start_simultion_button = ui::create_button(start_simulation_init, &window);
   ui::activate_graphics(start_simultion_button);
@@ -203,6 +212,9 @@ void load_main_menu() {
   load_simulation_init.width = button_width;
   load_simulation_init.height = button_height;
   load_simulation_init.text = "Load Simulation";
+  load_simulation_init.color_normal = color_normal;
+  load_simulation_init.color_heighlight = color_heighlight;
+  load_simulation_init.color_gray = color_gray;
 
   ui::Button* load_simulation_button = ui::create_button(load_simulation_init, &window);
   ui::activate_graphics(load_simulation_button);
@@ -215,6 +227,9 @@ void load_main_menu() {
   quit_button_init.width = button_width;
   quit_button_init.height = button_height;
   quit_button_init.text = "Quit";
+  quit_button_init.color_normal = color_normal;
+  quit_button_init.color_heighlight = color_heighlight;
+  quit_button_init.color_gray = color_gray;
 
   ui::Button* quit_button = ui::create_button(quit_button_init, &window);
   ui::activate_graphics(quit_button);

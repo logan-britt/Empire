@@ -15,6 +15,7 @@ namespace merlin {
   enum layouts{UNDEFINED_PRESENT, PRESENT};
   enum bind_point{GRAPHICS};
   enum input_rate{RATE_VERTEX, RATE_INTANCE};
+  enum input_type{FLOAT, DOUBLE};
   enum loacation_format{FVEC1, FVEC2, FVEC3, FVEC4, DVEC1, DVEC2, DVEC3, DVEC4};
 
   struct Shader
@@ -44,7 +45,11 @@ namespace merlin {
     bool input_data;
     std::vector<Input_Binding> bindings;
     std::vector<Input_Attribute> attributes;
+
+    size_t vertex_count;
+    size_t instance_count;
   };
+
   struct Fixed_Functions
   {
     bool reuse;
@@ -56,6 +61,7 @@ namespace merlin {
   {
     bool enable;
   };
+
   struct Uniform
   {
     bool uniform;
@@ -112,14 +118,13 @@ namespace merlin {
     VkRenderPass render_pass;
 
     VkBuffer transfer_buffer;
-    std::vector<VkBuffer> vertex_buffer;
-    std::vector<VkBuffer> index_buffer;
-    std::vector<VkBuffer> uniform_buffer;
+    std::vector<VkBuffer> vertex_buffers;
+    std::vector<VkBuffer> index_buffers;
+    std::vector<VkBuffer> uniform_buffers;
 
     std::vector<VkFramebuffer> framebuffers;
     std::vector<VkCommandBuffer> draw_buffers;
   };
-
 
   struct Graph_Init
   {

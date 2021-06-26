@@ -51,6 +51,9 @@ ui::Button* ui::create_button(Button_Init init, merlin::Window* window) {
   input.bindings = {binding};
   input.attributes = {attribute_0, attribute_1};
 
+  input.vertex_count = 3;
+  input.instance_count = 1;
+
   merlin::Fixed_Functions fixed_functions = {};
   fixed_functions.reuse = false;
   fixed_functions.topology = merlin::TRIANGLE_LIST;

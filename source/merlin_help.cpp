@@ -1,5 +1,4 @@
 #include "../include/merlin_help.hpp"
-
 #include "../libs/SDL2/include/SDL_vulkan.h"
 
 #include <iostream>

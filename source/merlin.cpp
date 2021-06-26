@@ -139,8 +139,7 @@ namespace merlin {
     vkGetDeviceQueue(engine->device, engine->present_index, 0, &engine->present_queue);
     vkGetDeviceQueue(engine->device, engine->graphics_index, 0, &engine->graphics_queue);
     vkGetDeviceQueue(engine->device, engine->transfer_index, 0, &engine->transfer_queue);
-    
-    /* --- currently failing --- */
+
     res = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(engine->physical_device, window->surface, &window->capabilities);
     if(res != VK_SUCCESS) {
       std::cout << res << std::endl;
@@ -266,9 +265,13 @@ namespace merlin {
     vkGetSwapchainImagesKHR(engine->device, window->swapchain, &window->image_count, window->images.data());
 
     window->linked_engine = engine;
-    engine->linked_windows.push_back(window);
+    engine->linked_windows = {window};
   }
   void destroy_engine(Engine engine) {
+    for(auto window : engine.linked_windows) {
+      destory_window(*window);
+    }
+
     vkDestroyDevice(engine.device, nullptr);
     if(engine.debug) {
       destroy_debug_utils_messenger_EXT(engine.instance, engine.debug_messenger, nullptr);
