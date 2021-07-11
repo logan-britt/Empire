@@ -3,6 +3,8 @@
 
 #include <vulkan/vulkan.h>
 #include "../libs/SDL2/include/SDL.h"
+
+#include "../include/vk_mem_alloc.h"
 #include "../include/merlin.hpp"
 
 #include <vector>

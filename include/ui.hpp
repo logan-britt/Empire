@@ -39,8 +39,6 @@ namespace ui
   Button* create_button(Button_Init init, merlin::Window* window);
   void destroy_button(Button* button);
 
-  void activate_graphics(Button* button);
-  void deactivate_graphics(Button* button);
   bool inside(float x, float y, Button* button);
 
   struct Panel_Init

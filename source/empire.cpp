@@ -11,6 +11,7 @@
 #include "../libs/SDL2/include/SDL.h"
 
 #include <iostream>
+#include <thread>
 #undef main
 
 // the gloabal declerations for simulation data
@@ -27,6 +28,10 @@ std::vector<ui::Panel*> panels;
 
 uint32_t click_state;
 float mouse_x, mouse_y;
+
+uint32_t cpu_count;
+uint32_t current_thread_count;
+uint32_t thread_max_count;
 
 
 
@@ -49,6 +54,15 @@ void load_simulation();
 
 int main() {
   /* --- set up the simulation engine --- */
+  cpu_count = std::thread::hardware_concurrency();
+  if(cpu_count % 2 == 0) {
+    thread_max_count = cpu_count/2;
+  }
+  else {
+    thread_max_count = cpu_count/2 + 1;
+  }
+  current_thread_count = 1;
+
   merlin::init();
   merlin::Engine_Init e_init = {true, DISCRETE};
   merlin::Window_Init w_init = {1280, 720, "Empire", false};
@@ -187,9 +201,9 @@ void load_main_menu() {
   world_create_init.color_gray = color_gray;
 
   ui::Button* world_create_button = ui::create_button(world_create_init, &window);
-  ui::activate_graphics(world_create_button);
+  (world_create_button);
   buttons.push_back(world_create_button);
-  draw_targets.push_back(&world_create_button->render_graph);
+  //draw_targets.push_back(&world_create_button->render_graph);
 
   ui::Button_Init start_simulation_init = {};
   start_simulation_init.x = window_width/2.0f - button_width/2.0f;
@@ -202,9 +216,8 @@ void load_main_menu() {
   start_simulation_init.color_gray = color_gray;
 
   ui::Button* start_simultion_button = ui::create_button(start_simulation_init, &window);
-  ui::activate_graphics(start_simultion_button);
   buttons.push_back(start_simultion_button);
-  draw_targets.push_back(&start_simultion_button->render_graph);
+  //draw_targets.push_back(&start_simultion_button->render_graph);
 
   ui::Button_Init load_simulation_init = {};
   load_simulation_init.x = window_width/2.0f - button_width/2.0f;
@@ -217,9 +230,8 @@ void load_main_menu() {
   load_simulation_init.color_gray = color_gray;
 
   ui::Button* load_simulation_button = ui::create_button(load_simulation_init, &window);
-  ui::activate_graphics(load_simulation_button);
   buttons.push_back(load_simulation_button);
-  draw_targets.push_back(&load_simulation_button->render_graph);
+  //draw_targets.push_back(&load_simulation_button->render_graph);
 
   ui::Button_Init quit_button_init = {};
   quit_button_init.x = window_width/2.0f - button_width/2.0f;
@@ -232,9 +244,8 @@ void load_main_menu() {
   quit_button_init.color_gray = color_gray;
 
   ui::Button* quit_button = ui::create_button(quit_button_init, &window);
-  ui::activate_graphics(quit_button);
   buttons.push_back(quit_button);
-  draw_targets.push_back(&quit_button->render_graph);
+  //draw_targets.push_back(&quit_button->render_graph);
 }
 void load_world_create() {
   /* --- clean up the global data from the previous scene --- */

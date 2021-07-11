@@ -23,6 +23,8 @@ namespace merlin {
     VkPipelineInputAssemblyStateCreateInfo create_input_assemply(input_topology topology, bool reuse);
     VkAttachmentDescription create_attachment_description(int sample_count, VkFormat image_format, ops data_ops, ops stencil_ops, layouts layouts);
     VkImageLayout choose_layout(layouts transition_layouts);
+
+    VkDeviceMemory allocate_memory(size_t size, VkDevice device);
   }
 }
 

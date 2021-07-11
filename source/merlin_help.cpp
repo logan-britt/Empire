@@ -497,5 +497,22 @@ namespace merlin {
       }
       return layout;
     }
+
+    VkDeviceMemory allocate_memory(size_t size, uint32_t index, VkDevice device) {
+      VkMemoryAllocateInfo info = {};
+      info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+      info.pNext = nullptr;
+      info.memoryTypeIndex = index;
+      info.allocationSize = size;
+
+      VkDeviceMemory memory;
+      auto res = vkAllocateMemory(device, &info, nullptr, &memory);
+      if(res != VK_SUCCESS) {
+        std::cout << res << std::endl;
+        std::cerr << "The memory allocation faild. Shutting Down." << std::endl;
+        throw;
+      }
+      return memory;
+    }
   }
 }

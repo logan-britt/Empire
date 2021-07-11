@@ -103,14 +103,6 @@ void ui::destroy_button(Button* button) {
   delete button;
 }
 
-void ui::activate_graphics(Button* button) {
-  merlin::load_state(1, &button->render_graph);
-  merlin::activate_state(1, &button->render_graph);
-}
-void ui::deactivate_graphics(Button* button) {
-  merlin::deactivate_state(&button->render_graph);
-  merlin::unload_state(1, &button->render_graph);
-}
 bool ui::inside(float x, float y, Button* button) {
   bool x_check, y_check;
   if(x < button->x + button->width && x > button->x) {

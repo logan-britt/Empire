@@ -1,9 +1,6 @@
 #include "../include/merlin_draw.hpp"
 #include "../include/merlin_help.hpp"
 
-#define VMA_IMPLEMENTATION
-#include "../include/vk_mem_alloc.h"
-
 #include <map>
 #include <thread>
 #include <iostream>
