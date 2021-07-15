@@ -15,6 +15,9 @@ namespace merlin {
     graph.id = init.id;
     graph.linked_window = window;
 
+    graph.allocator = init.allocator;
+    graph.memory_pool = init.pool;
+
     // create the image views for rendering
     graph.views.resize(window->image_count);
     for(uint32_t i=0; i<window->image_count; i++) {
@@ -42,6 +45,23 @@ namespace merlin {
         throw;
       }
     }
+
+    /*
+    VkDescriptorPoolCreateInfo descriptor_pool_create_info = {};
+    descriptor_pool_create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    descriptor_pool_create_info.pNext = nullptr;
+    descriptor_pool_create_info.flags = 0;
+    descriptor_pool_create_info.maxSets = ;
+    descriptor_pool_create_info.poolSizeCount = ;
+    descriptor_pool_create_info.pPoolSizes = ;
+
+    res = vkCreateDescriptorPool(window->linked_engine->device, &descriptor_pool_create_info, nullptr, &graph.descriptor_pool);
+    if(res != VK_SUCCESS) {
+      std::cout << res << std::endl;
+      std::cerr << "The descripter pool could not be created. Shutting down." << std::endl;
+      throw;
+    }
+    */
 
     VkCommandPoolCreateInfo draw_pool_crate_info = {};
     draw_pool_crate_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -114,8 +134,10 @@ namespace merlin {
     for(auto view : graph.views) {
       vkDestroyImageView(device, view, nullptr);
     }
-    for(auto state : graph.loaded_states) {
-      unload_state(state.id, &graph);
+
+    while(!graph.loaded_states.empty()) {
+      auto state_it = graph.loaded_states.begin();
+      unload_state((*state_it).id, &graph);
     }
 
     vkDestroyCommandPool(device, graph.draw_pool, nullptr);
@@ -351,6 +373,14 @@ namespace merlin {
     VkPipelineLayoutCreateInfo pipeline_layout_info = {};
     if(state_init.uniform.uniform) {
 
+
+      pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+      pipeline_layout_info.pNext = nullptr;
+      pipeline_layout_info.flags = 0;
+      pipeline_layout_info.setLayoutCount = 0;
+      pipeline_layout_info.pSetLayouts = nullptr;
+      pipeline_layout_info.pushConstantRangeCount = 0;
+      pipeline_layout_info.pPushConstantRanges = nullptr;
     }
     else {
       pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -494,26 +524,12 @@ namespace merlin {
       throw;
     }
 
-    state.vertex_buffers.resize(state_init.input.bindings.size());
-    state.index_buffers.resize(state_init.input.bindings.size());
-    for(uint32_t i=0; i<state.vertex_buffers.size(); i++) {
-      size_t instance_count = state_init.input.instance_count;
-      size_t vertex_count = state_init.input.vertex_count;
-      size_t binding_size = state_init.input.bindings[i].stride;
-
-      VkBufferCreateInfo vertex_buffer_create_info = {};
-      vertex_buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-      vertex_buffer_create_info.pNext = nullptr;
-      vertex_buffer_create_info.flags = 0;
-      vertex_buffer_create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-      vertex_buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-      vertex_buffer_create_info.size = instance_count*vertex_count*binding_size;
-
-      res = vkCreateBuffer(graph->linked_window->linked_engine->device, &vertex_buffer_create_info, nullptr, &state.vertex_buffers[i]);
-      if(res != VK_SUCCESS) {
-        std::cout << res << std::endl;
-        std::cerr << "A vertex buffer could not be created. Shutting Down." << std::endl;
-        throw;
+    state.buffers.resize(state_init.buffer_info.create_infos.size());
+    for(uint32_t i=0; i<state.buffers.size(); i++) {
+      Buffer_Create_Info create_info = state_init.buffer_info.create_infos[i];
+      state.buffers[i] = create_buffer(create_info, *graph->memory_pool, *graph->allocator, graph->linked_window->linked_engine);
+      if(state.buffers[i]->raw) {
+        state.feedable_buffer_ids.push_back(state.buffers[i]->id);
       }
     }
 
@@ -575,15 +591,35 @@ namespace merlin {
       render_pass_begin_info.renderArea.offset = {0, 0};
       render_pass_begin_info.renderArea.extent = graph->linked_window->extent_2d;
 
-      VkClearValue clear_color = {0.0f, 0.0f, 0.0f, 1.0f};
-      render_pass_begin_info.clearValueCount = 1;
-      render_pass_begin_info.pClearValues = &clear_color;
+      render_pass_begin_info.clearValueCount = 0;
+      render_pass_begin_info.pClearValues = nullptr;
 
       vkCmdBeginRenderPass(state.draw_buffers[i], &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
         vkCmdBindPipeline(state.draw_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, state.pipeline);
 
-        vkCmdDraw(state.draw_buffers[i], state_init.input.vertex_count, state_init.input.instance_count, 0, 0);
+        VkBuffer index_buffer = VK_NULL_HANDLE;
+        std::vector<VkBuffer> vertex_buffers = {};
+        for(uint32_t i=0; i<state.buffers.size(); i++) {
+          Buffer* buffer = state.buffers[i];
+          if(buffer->type & VERTEX) {
+            vertex_buffers.push_back(buffer->buffer);
+          }
+          else if(buffer->type & INDEX) {
+            index_buffer = buffer->buffer;
+          }
+        }
+
+        std::vector<VkDeviceSize> offsets(vertex_buffers.size(), 0);
+        vkCmdBindVertexBuffers(state.draw_buffers[i], 0, vertex_buffers.size(), vertex_buffers.data(), offsets.data());
+
+        if(index_buffer != VK_NULL_HANDLE) {
+          vkCmdBindIndexBuffer(state.draw_buffers[i], index_buffer, 0, VK_INDEX_TYPE_UINT32);
+          vkCmdDrawIndexed(state.draw_buffers[i], state_init.input.index_count,state_init.input.instance_count, 0, 0, 0);
+        }
+        else {
+          vkCmdDraw(state.draw_buffers[i], state_init.input.vertex_count, state_init.input.instance_count, 0, 0);
+        }
 
       vkCmdEndRenderPass(state.draw_buffers[i]);
 
@@ -626,12 +662,12 @@ namespace merlin {
       vkDestroyShaderModule(device, state.geometry_module, nullptr);
     }
 
-    for(uint32_t i=0; i<state.vertex_buffers.size(); i++) {
-      vkDestroyBuffer(device, state.vertex_buffers[i], nullptr);
-    }
-
     for(auto framebuffer : state.framebuffers) {
       vkDestroyFramebuffer(device, framebuffer, nullptr);
+    }
+
+    for(auto buffer : state.buffers) {
+      destroy_buffer(buffer, *graph->allocator, graph->linked_window->linked_engine);
     }
 
     vkDestroyPipelineLayout(device, state.pipeline_layout, nullptr);
@@ -674,15 +710,32 @@ namespace merlin {
     }
     window->images_in_flight[image_index] = window->in_flight_fences[window->current_frame];
 
+    vkResetFences(engine->device, 1, &window->clear_fences[image_index]);
+
+    VkPipelineStageFlags mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkSubmitInfo clear_submit_info = {};
+    clear_submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    clear_submit_info.pNext = nullptr;
+    clear_submit_info.commandBufferCount = 1;
+    clear_submit_info.pCommandBuffers = &window->clear_command_buffers[image_index];
+    clear_submit_info.waitSemaphoreCount = 1;
+    clear_submit_info.pWaitSemaphores = &window->image_available_semaphores[image_index];
+    clear_submit_info.pWaitDstStageMask = &mask;
+    clear_submit_info.signalSemaphoreCount = 0;
+
+    vkQueueSubmit(engine->graphics_queue, 1, &clear_submit_info, window->clear_fences[image_index]);
+
+    vkWaitForFences(engine->device, 1, &window->clear_fences[image_index], VK_TRUE, UINT64_MAX);
+
     std::vector<VkSubmitInfo> submit_infos(graphs.size());
     for(uint32_t i=0; i<graphs.size(); i++) {
       submit_infos[i].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
       submit_infos[i].pNext = nullptr;
 
-      VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+      VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
       submit_infos[i].waitSemaphoreCount = 1;
       submit_infos[i].pWaitSemaphores = &window->image_available_semaphores[window->current_frame];
-      submit_infos[i].pWaitDstStageMask = waitStages;
+      submit_infos[i].pWaitDstStageMask = wait_stages;
       submit_infos[i].commandBufferCount = 1;
       submit_infos[i].pCommandBuffers = &graphs[i]->active_state->draw_buffers[image_index];
       submit_infos[i].signalSemaphoreCount = 1;
@@ -734,5 +787,71 @@ namespace merlin {
 
       subdraw(graph_pointers, window, engine);
     }
+  }
+  void fill_state_with_floats(std::vector<float> data, int state_id, int buffer_id, Graph* graph) {
+    State* state;
+    bool state_found = false;
+    for(uint32_t i=0; i<graph->loaded_states.size(); i++) {
+      int id = graph->loaded_states[i].id;
+      if(id == state_id) {
+        state_found = true;
+        state = &graph->loaded_states[i];
+        break;
+      }
+    }
+    if(!state_found) {
+      std::cerr << "The state with the given id could not be found. Shutting down." << std::endl;
+      throw;
+    }
+
+    Buffer* buffer;
+    bool buffer_found = false;
+    for(uint32_t i=0; i<state->buffers.size(); i++) {
+      int id = state->buffers[i]->id;
+      if(id == buffer_id) {
+        buffer_found = true;
+        buffer = state->buffers[i];
+        break;
+      }
+    }
+    if(!buffer_found) {
+      std::cerr << "A buffer with the id given could not be found. Shutting down." << std::endl;
+      throw;
+    }
+
+    copy_floats_to_buffer(data, buffer);
+  }
+  void fill_state_with_ints(std::vector<uint32_t> data, int state_id, int buffer_id, Graph* graph) {
+    State* state;
+    bool state_found = false;
+    for(uint32_t i=0; i<graph->loaded_states.size(); i++) {
+      int id = graph->loaded_states[i].id;
+      if(id == state_id) {
+        state_found = true;
+        state = &graph->loaded_states[i];
+        break;
+      }
+    }
+    if(!state_found) {
+      std::cerr << "The state with the given id could not be found. Shutting down." << std::endl;
+      throw;
+    }
+
+    Buffer* buffer;
+    bool buffer_found = false;
+    for(uint32_t i=0; i<state->buffers.size(); i++) {
+      int id = state->buffers[i]->id;
+      if(id == buffer_id) {
+        buffer_found = true;
+        buffer = state->buffers[i];
+        break;
+      }
+    }
+    if(!buffer_found) {
+      std::cerr << "A buffer with the id given could not be found. Shutting down." << std::endl;
+      throw;
+    }
+
+    copy_ints_to_buffer(data, buffer);
   }
 }

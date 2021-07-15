@@ -3,6 +3,7 @@
 
 #include <vulkan/vulkan.h>
 #include "../libs/SDL2/include/SDL.h"
+#include "../libs/glm/glm/mat2x2.hpp"
 
 #include <vector>
 #include <string>
@@ -47,6 +48,7 @@ namespace merlin {
     int height;
     std::string title;
     bool resizable;
+    float r, g, b;
   };
   struct Window
   {
@@ -69,6 +71,15 @@ namespace merlin {
 
     uint32_t max_frames;
     uint32_t current_frame;
+
+    VkClearColorValue clear_color;
+    VkImageSubresourceRange image_range;
+    std::vector<VkFence> clear_fences;
+
+    glm::mat2x2 transform;
+
+    VkCommandPool clear_pool;
+    std::vector<VkCommandBuffer> clear_command_buffers;
 
     std::vector<VkFence> in_flight_fences;
     std::vector<VkFence> images_in_flight;

@@ -43,6 +43,7 @@ def execute(clang_flags, nvcc_flags):
       'source/merlin_help.cpp',
       'source/merlin_memory.cpp',
       'source/merlin_draw.cpp',
+      'source/vk_mem_help.cpp',
       
       '-ID:/Programming/Vulkan/1.2.162.1/include/',
       '-Ilibs/SDL2/include',

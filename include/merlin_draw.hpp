@@ -6,9 +6,11 @@
 
 #include "../include/vk_mem_alloc.h"
 #include "../include/merlin.hpp"
+#include "../include/merlin_memory.hpp"
 
 #include <vector>
 #include <string>
+#include <array>
 
 namespace merlin {
   enum input_topology{POINT_LIST, LINE_LIST, LINE_STRIP, TRIANGLE_LIST, TRIANGLE_STRIP, TRIANGLE_FAN};
@@ -19,6 +21,9 @@ namespace merlin {
   enum input_rate{RATE_VERTEX, RATE_INTANCE};
   enum input_type{FLOAT, DOUBLE};
   enum loacation_format{FVEC1, FVEC2, FVEC3, FVEC4, DVEC1, DVEC2, DVEC3, DVEC4};
+  enum draw_space{VULKAN_SPACE, SCREEN_SPACE, WORLD_SPACE};
+
+  typedef std::array<int, 2> copy_path;
 
   struct Shader
   {
@@ -50,6 +55,7 @@ namespace merlin {
 
     size_t vertex_count;
     size_t instance_count;
+    size_t index_count;
   };
 
   struct Fixed_Functions
@@ -67,6 +73,7 @@ namespace merlin {
   struct Uniform
   {
     bool uniform;
+    draw_space space;
   };
 
   struct Attachment
@@ -96,6 +103,12 @@ namespace merlin {
     std::vector<Dependency> dependencies;
   };
 
+  struct Buffer_Info
+  {
+    std::vector<copy_path> copy_infos;
+    std::vector<Buffer_Create_Info> create_infos;
+  };
+
   struct State_Init
   {
     int id;
@@ -105,6 +118,7 @@ namespace merlin {
     Multisampling multisampling;
     Uniform uniform;
     Render_Pass render_pass;
+    Buffer_Info buffer_info;
   };
   struct State
   {
@@ -119,10 +133,8 @@ namespace merlin {
     VkPipelineLayout pipeline_layout;
     VkRenderPass render_pass;
 
-    VkBuffer transfer_buffer;
-    std::vector<VkBuffer> vertex_buffers;
-    std::vector<VkBuffer> index_buffers;
-    std::vector<VkBuffer> uniform_buffers;
+    std::vector<int> feedable_buffer_ids;
+    std::vector<Buffer*> buffers;
 
     std::vector<VkFramebuffer> framebuffers;
     std::vector<VkCommandBuffer> draw_buffers;
@@ -131,6 +143,10 @@ namespace merlin {
   struct Graph_Init
   {
     int id;
+
+    VmaPool* pool;
+    VmaAllocator* allocator;
+
     bool activated = false;
     State_Init active;
     std::vector<State_Init> loaded;
@@ -144,6 +160,11 @@ namespace merlin {
     std::vector<VkImageView> views;
     VkCommandPool draw_pool;
     VkCommandPool transfer_pool;
+
+    VmaPool* memory_pool;
+    VmaAllocator* allocator;
+    
+    VkDescriptorPool descriptor_pool;
 
     bool activated;
     State* active_state;
@@ -163,6 +184,8 @@ namespace merlin {
   void deactivate_state(Graph* graph);
 
   void draw(std::vector<Graph*> graphs);
+  void fill_state_with_floats(std::vector<float> data, int state_id, int buffer_id, Graph* graph);
+  void fill_state_with_ints(std::vector<uint32_t> data, int state_id, int buffer_id, Graph* graph);
 }
 
 #endif

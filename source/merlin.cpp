@@ -214,8 +214,83 @@ namespace merlin {
       engine->device
     );
 
+    vkGetSwapchainImagesKHR(engine->device, window->swapchain, &window->image_count, nullptr);
+    window->images.resize(window->image_count);
+    vkGetSwapchainImagesKHR(engine->device, window->swapchain, &window->image_count, window->images.data());
+
     window->max_frames = 3;
     window->current_frame = 0;
+
+    VkCommandPoolCreateInfo clear_pool_create_info = {};
+    clear_pool_create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    clear_pool_create_info.pNext = nullptr;
+    clear_pool_create_info.flags = 0;
+    clear_pool_create_info.queueFamilyIndex = engine->graphics_index;
+
+    res = vkCreateCommandPool(engine->device, &clear_pool_create_info, nullptr, &window->clear_pool);
+    if(res != VK_SUCCESS) {
+      std::cout << res << std::endl;
+      std::cerr << "The command pool could not be created. Shutting down." << std::endl;
+      throw;
+    }
+
+    window->clear_command_buffers.resize(window->image_count);
+
+    VkCommandBufferAllocateInfo command_buffer_allocation_info{};
+    command_buffer_allocation_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    command_buffer_allocation_info.commandPool = window->clear_pool;
+    command_buffer_allocation_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    command_buffer_allocation_info.commandBufferCount = (uint32_t) window->clear_command_buffers.size();
+
+    res = vkAllocateCommandBuffers(engine->device, &command_buffer_allocation_info, window->clear_command_buffers.data());
+    if(res != VK_SUCCESS) {
+      std::cout << res << std::endl;
+      std::cerr << "The command buffer for clear opperation could not be allocated. Shutting down." << std::endl;
+      throw;
+    }
+
+    for(uint32_t i=0; i<window->clear_command_buffers.size(); i++) {
+      VkCommandBufferBeginInfo command_buffer_begin_info = {};
+      command_buffer_begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+      command_buffer_begin_info.pNext = nullptr;
+      command_buffer_begin_info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+      command_buffer_begin_info.pInheritanceInfo = nullptr;
+
+      res = vkBeginCommandBuffer(window->clear_command_buffers[i], &command_buffer_begin_info);
+      if(res != VK_SUCCESS) {
+        std::cout << res << std::endl;
+        std::cerr << "The command buffer for the clear operation could not be began. Shutting down." << std::endl;
+        throw;
+      }
+
+      window->clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+      window->image_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+      window->image_range.levelCount = 1;
+      window->image_range.layerCount = 1;
+
+      vkCmdClearColorImage(window->clear_command_buffers[i], window->images[i], VK_IMAGE_LAYOUT_GENERAL, &window->clear_color, 1, &window->image_range);
+
+      res = vkEndCommandBuffer(window->clear_command_buffers[i]);
+      if(res != VK_SUCCESS) {
+        std::cout << res << std::endl;
+        std::cerr << "The command buffer for the clear opperation could not be ended. Shutting down." << std::endl;
+        throw;
+      }
+    }
+
+    VkFenceCreateInfo clear_fence_create_info = {};
+    clear_fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+    window->clear_fences.resize(window->image_count);
+    for(uint32_t i=0; i<window->image_count; i++) {
+      res = vkCreateFence(engine->device, &clear_fence_create_info, nullptr, &window->clear_fences[i]);
+      if(res != VK_SUCCESS) {
+        std::cout << res << std::endl;
+        std::cerr << "The fences for the clear operation could not be created. Shutting down." << std::endl;
+        throw;
+      }
+    }
 
     VkSemaphoreTypeCreateInfoKHR binary_info = {};
     binary_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO_KHR;
@@ -259,17 +334,21 @@ namespace merlin {
         throw;
       }
     }
-    
-    vkGetSwapchainImagesKHR(engine->device, window->swapchain, &window->image_count, nullptr);
-    window->images.resize(window->image_count);
-    vkGetSwapchainImagesKHR(engine->device, window->swapchain, &window->image_count, window->images.data());
+
+    glm::vec2 collumn_0 = {2.0f/(float)window->width, 0.0f};
+    glm::vec2 collumn_1 = {0.0f, -2.0f/(float)window->height};
+    window->transform = {collumn_0, collumn_1};
 
     window->linked_engine = engine;
     engine->linked_windows = {window};
   }
   void destroy_engine(Engine engine) {
-    for(auto window : engine.linked_windows) {
-      destory_window(*window);
+    while(!engine.linked_windows.empty()) {
+      auto window_it = engine.linked_windows.begin();
+      auto window_ptr = *window_it;
+      
+      destory_window(*window_ptr);
+      engine.linked_windows.erase(window_it);
     }
 
     vkDestroyDevice(engine.device, nullptr);
@@ -294,6 +373,4 @@ namespace merlin {
       window.destroyed = true;
     }
   }
-
-  
 }
